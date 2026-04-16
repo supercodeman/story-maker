@@ -1,0 +1,84 @@
+// web/src/assets/styles/theme.scss
+
+// 字体导入
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+// ========== 浅色主题（默认） ==========
+:root {
+  --color-primary: #6366F1;
+  --color-primary-light: #818CF8;
+  --color-primary-dark: #4F46E5;
+
+  // 背景层级
+  --color-bg-deep: #F5F6FA;
+  --color-bg-surface: #FFFFFF;
+  --color-bg-card: #FFFFFF;
+  --color-bg-hover: #F0F1F5;
+  --color-bg-editor: #FAFBFC;
+
+  // 文字层级
+  --color-text-primary: #1A1A2E;
+  --color-text-secondary: #64748B;
+  --color-text-muted: #94A3B8;
+
+  // 强调色
+  --color-accent-cyan: #06B6D4;
+  --color-accent-green: #10B981;
+  --color-accent-amber: #F59E0B;
+
+  // 边框
+  --border-glow: #E2E8F0;
+  --border-light: #F1F5F9;
+
+  // 遮罩
+  --color-bg-overlay: rgba(255, 255, 255, 0.85);
+
+  // 阴影
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.08);
+  --shadow-glow: 0 0 0 transparent;
+
+  // 字体
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+}
+
+// ========== 暗色主题 ==========
+html.dark {
+  --color-primary: #7C8CF8;
+  --color-primary-light: #A5B4FC;
+  --color-primary-dark: #5B6AE0;
+
+  // 背景层级
+  --color-bg-deep: #12141c;
+  --color-bg-surface: #191c28;
+  --color-bg-card: #1f2233;
+  --color-bg-hover: #272b3e;
+  --color-bg-editor: #1c1f2b;
+
+  // 文字层级
+  --color-text-primary: #d4d4c8;
+  --color-text-secondary: #9299b0;
+  --color-text-muted: #5a6178;
+
+  // 强调色
+  --color-accent-cyan: #67E8F9;
+  --color-accent-green: #6EE7B7;
+  --color-accent-amber: #FCD34D;
+
+  // 边框
+  --border-glow: rgba(124, 140, 248, 0.12);
+  --border-light: rgba(124, 140, 248, 0.06);
+
+  // 遮罩
+  --color-bg-overlay: rgba(26, 29, 46, 0.85);
+
+  // 阴影
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.4);
+  --shadow-glow: 0 0 15px rgba(124, 140, 248, 0.1);
+
+  color-scheme: dark;
+}

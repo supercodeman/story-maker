@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ai-Curton 创意工坊 - 项目架构全景</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0f0f1a;color:#e2e8f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.6;overflow-x:hidden}
+.container{max-width:1200px;margin:0 auto;padding:20px}
+h1{text-align:center;font-size:2.6rem;margin:50px 0 10px;background:linear-gradient(135deg,#4a9eff,#a855f7,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.subtitle{text-align:center;color:#6b7280;font-size:1.1rem;margin-bottom:20px}
+section{opacity:0;transform:translateY(40px);transition:opacity 0.8s ease,transform 0.8s ease;margin-bottom:70px}
+section.visible{opacity:1;transform:translateY(0)}
+.section-title{font-size:1.5rem;margin-bottom:24px;padding-bottom:10px;border-bottom:2px solid #1e293b;display:flex;align-items:center;gap:10px}
+.section-title .icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.1rem}
+
+/* Hero stats */
+.hero-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin-top:30px}
+@media(max-width:768px){.hero-stats{grid-template-columns:repeat(2,1fr)}}
+.stat-card{border-radius:16px;padding:24px;text-align:center;opacity:0;transform:translateY(20px);transition:all .5s ease;position:relative;overflow:hidden}
+.stat-card.show{opacity:1;transform:translateY(0)}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.stat-card.c1{background:linear-gradient(135deg,#0f1a2e,#1a2540);border:1px solid #4a9eff30}
+.stat-card.c1::before{background:linear-gradient(90deg,#4a9eff,#60a5fa)}
+.stat-card.c2{background:linear-gradient(135deg,#1a0f2e,#251540);border:1px solid #a855f730}
+.stat-card.c2::before{background:linear-gradient(90deg,#a855f7,#c084fc)}
+.stat-card.c3{background:linear-gradient(135deg,#1a1a0f,#25200f);border:1px solid #f59e0b30}
+.stat-card.c3::before{background:linear-gradient(90deg,#f59e0b,#fbbf24)}
+.stat-card.c4{background:linear-gradient(135deg,#0f1a12,#152015);border:1px solid #22c55e30}
+.stat-card.c4::before{background:linear-gradient(90deg,#22c55e,#4ade80)}
+.stat-label{font-size:.8rem;color:#6b7280;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px}
+.stat-value{font-size:1.1rem;font-weight:700}
+.stat-card.c1 .stat-value{color:#4a9eff}
+.stat-card.c2 .stat-value{color:#a855f7}
+.stat-card.c3 .stat-value{color:#f59e0b}
+.stat-card.c4 .stat-value{color:#22c55e}
+.stat-desc{font-size:.75rem;color:#475569;margin-top:4px}
+
+/* Layer architecture */
+.layer-stack{display:flex;flex-direction:column;gap:8px;align-items:center}
+.layer-box{width:90%;max-width:900px;padding:18px 24px;border-radius:14px;text-align:center;opacity:0;transform:scale(0.9);transition:all .5s ease;position:relative}
+.layer-box.show{opacity:1;transform:scale(1)}
+.layer-box .layer-name{font-weight:700;font-size:1rem;margin-bottom:6px}
+.layer-box .layer-detail{font-size:.8rem;color:#94a3b8;font-family:monospace}
+.layer-box.frontend{background:linear-gradient(135deg,#2a4a7f,#1e3a5f);border:1px solid #4a9eff40;box-shadow:0 0 20px #4a9eff20}
+.layer-box.frontend .layer-name{color:#60a5fa}
+.layer-box.gateway{background:linear-gradient(135deg,#4c1d95,#3b0764);border:1px solid #a855f740;box-shadow:0 0 20px #a855f720}
+.layer-box.gateway .layer-name{color:#c084fc}
+.layer-box.business{background:linear-gradient(135deg,#92400e,#78350f);border:1px solid #f59e0b40;box-shadow:0 0 20px #f59e0b20}
+.layer-box.business .layer-name{color:#fbbf24}
+.layer-box.ai-engine{background:linear-gradient(135deg,#831843,#701a3e);border:1px solid #ec489940;box-shadow:0 0 20px #ec489920}
+.layer-box.ai-engine .layer-name{color:#f472b6}
+.layer-box.orchestration{background:linear-gradient(135deg,#166534,#14532d);border:1px solid #22c55e40;box-shadow:0 0 20px #22c55e20}
+.layer-box.orchestration .layer-name{color:#4ade80}
+.layer-box.data{background:linear-gradient(135deg,#1e293b,#0f172a);border:1px solid #64748b40;box-shadow:0 0 20px #64748b20}
+.layer-box.data .layer-name{color:#94a3b8}
+.layer-arrow{color:#475569;font-size:1.4rem;opacity:0;transition:opacity .5s;text-align:center}
+.layer-arrow.show{opacity:1}
+.layer-arrow span{display:inline-block;animation:flowDown 1.5s infinite}
+@keyframes flowDown{0%,100%{opacity:.3}50%{opacity:1}}
+
+/* Backend flow */
+.backend-flow{display:flex;align-items:flex-start;gap:12px;overflow-x:auto;padding:10px 0;justify-content:center;flex-wrap:wrap}
+.flow-card{min-width:160px;max-width:200px;border-radius:14px;padding:16px;opacity:0;transform:scale(0.8);transition:all .5s ease;flex-shrink:0}
+.flow-card.show{opacity:1;transform:scale(1)}
+.flow-card .flow-title{font-weight:700;font-size:.9rem;margin-bottom:10px;text-align:center}
+.flow-card .flow-items{list-style:none;font-size:.75rem;font-family:monospace}
+.flow-card .flow-items li{padding:3px 0;color:#94a3b8}
+.flow-card.handler{background:linear-gradient(135deg,#2a4a7f,#1e3a5f);border:1px solid #4a9eff40}
+.flow-card.handler .flow-title{color:#60a5fa}
+.flow-card.service{background:linear-gradient(135deg,#4c1d95,#3b0764);border:1px solid #a855f740}
+.flow-card.service .flow-title{color:#c084fc}
+.flow-card.dao{background:linear-gradient(135deg,#92400e,#78350f);border:1px solid #f59e0b40}
+.flow-card.dao .flow-title{color:#fbbf24}
+.flow-card.model-card{background:linear-gradient(135deg,#166534,#14532d);border:1px solid #22c55e40}
+.flow-card.model-card .flow-title{color:#4ade80}
+.flow-card.agent{background:linear-gradient(135deg,#831843,#701a3e);border:1px solid #ec489940}
+.flow-card.agent .flow-title{color:#f472b6}
+.flow-arrow{color:#475569;font-size:1.5rem;display:flex;align-items:center;opacity:0;transition:opacity .5s}
+.flow-arrow.show{opacity:1}
+.flow-arrow span{animation:flowRight 1.5s infinite}
+@keyframes flowRight{0%,100%{opacity:.3}50%{opacity:1}}
+.backend-sub{display:flex;align-items:flex-start;gap:12px;margin-top:16px;justify-content:center;flex-wrap:wrap}
+
+/* AI Agent */
+.agent-diagram{display:flex;flex-direction:column;align-items:center;gap:10px}
+.agent-row{display:flex;gap:16px;justify-content:center;flex-wrap:wrap}
+.agent-node{padding:12px 20px;border-radius:12px;font-size:.85rem;font-weight:600;text-align:center;opacity:0;transform:scale(0.7);transition:all .5s ease;min-width:130px}
+.agent-node.show{opacity:1;transform:scale(1)}
+.agent-node.dispatcher{background:linear-gradient(135deg,#2a4a7f,#1e3a5f);border:1px solid #4a9eff60;box-shadow:0 0 20px #4a9eff30;color:#60a5fa}
+.agent-node.executor{background:linear-gradient(135deg,#4c1d95,#3b0764);border:1px solid #a855f760;box-shadow:0 0 20px #a855f730;color:#c084fc}
+.agent-node.provider{background:linear-gradient(135deg,#166534,#14532d);border:1px solid #22c55e60;box-shadow:0 0 20px #22c55e30;color:#4ade80}
+.agent-node.fallback{background:linear-gradient(135deg,#92400e,#78350f);border:1px solid #f59e0b60;box-shadow:0 0 20px #f59e0b30;color:#fbbf24}
+.agent-node.budget{background:linear-gradient(135deg,#831843,#701a3e);border:1px solid #ec489960;box-shadow:0 0 20px #ec489930;color:#f472b6}
+.agent-node .node-sub{font-size:.7rem;color:#94a3b8;margin-top:4px;font-weight:400}
+.agent-arrows{text-align:center;color:#475569;font-size:1.2rem;opacity:0;transition:opacity .5s}
+.agent-arrows.show{opacity:1}
+.agent-arrows span{animation:flowDown 1.5s infinite}
+.fallback-chain{display:flex;align-items:center;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap}
+.fallback-step{padding:8px 14px;border-radius:8px;font-size:.8rem;font-family:monospace;opacity:0;transform:scale(0.8);transition:all .4s ease}
+.fallback-step.show{opacity:1;transform:scale(1)}
+.fallback-step.primary{background:#16653440;border:1px solid #22c55e60;color:#86efac}
+.fallback-step.retry{background:#92400e40;border:1px solid #f59e0b60;color:#fde68a}
+.fallback-step.cross{background:#991b1b40;border:1px solid #ef444460;color:#fca5a5}
+.fallback-arrow{color:#6b7280;font-size:.9rem;opacity:0;transition:opacity .3s}
+.fallback-arrow.show{opacity:1}
+
+/* DAG workflow */
+.dag-container{position:relative;padding:20px 0}
+.dag-layer{display:flex;justify-content:center;align-items:center;gap:20px;margin-bottom:12px}
+.dag-node{padding:12px 22px;border-radius:12px;font-size:.9rem;font-weight:600;text-align:center;position:relative;opacity:0;transform:scale(0.7);transition:all .5s ease;min-width:120px}
+.dag-node.show{opacity:1;transform:scale(1)}
+.dag-node.blue{background:linear-gradient(135deg,#2a4a7f,#1e3a5f);border:1px solid #4a9eff60;box-shadow:0 0 20px #4a9eff30}
+.dag-node.purple{background:linear-gradient(135deg,#6b21a8,#4c1d95);border:1px solid #a855f760;box-shadow:0 0 20px #a855f730}
+.dag-node.green{background:linear-gradient(135deg,#166534,#14532d);border:1px solid #22c55e60;box-shadow:0 0 20px #22c55e30}
+.dag-node.orange{background:linear-gradient(135deg,#92400e,#78350f);border:1px solid #f59e0b60;box-shadow:0 0 20px #f59e0b30}
+.dag-node .node-name{font-family:monospace;font-size:.85rem}
+.dag-node .node-label{font-size:.7rem;color:#94a3b8;margin-top:4px}
+.dag-arrows{text-align:center;color:#475569;font-size:1.2rem;margin:4px 0;opacity:0;transition:opacity .5s}
+.dag-arrows.show{opacity:1}
+.dag-arrows .arrow-line{display:inline-block;animation:flowDown 1.5s infinite}
+.loop-subgraph{border:2px dashed #22c55e50;border-radius:16px;padding:20px;margin-top:8px;position:relative;background:#0a1a0f40}
+.loop-subgraph-title{position:absolute;top:-12px;left:20px;background:#0f0f1a;padding:0 10px;color:#22c55e;font-size:.8rem;font-weight:600}
+.loop-subgraph-inner{display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap}
+.loop-subgraph .condition{padding:10px 18px;border-radius:50%;background:#1a2e1a;border:1px solid #22c55e40;font-size:.8rem;color:#86efac;transform:rotate(45deg)}
+.loop-subgraph .condition span{display:block;transform:rotate(-45deg)}
+.loop-arrow-back{color:#22c55e;font-size:1.5rem;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:.5}50%{opacity:1}}
+.batch-diagram{margin-top:30px;padding:20px;border:1px solid #1e293b;border-radius:14px;background:#0f0f1a}
+.batch-title{text-align:center;font-size:.9rem;color:#94a3b8;margin-bottom:16px}
+.batch-row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.batch-node{padding:10px 16px;border-radius:10px;font-size:.8rem;font-family:monospace;opacity:0;transform:scale(0.8);transition:all .4s ease}
+.batch-node.show{opacity:1;transform:scale(1)}
+.batch-node.ch{background:#4c1d9540;border:1px solid #a855f740;color:#c084fc}
+
+/* Frontend */
+.fe-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media(max-width:768px){.fe-grid{grid-template-columns:1fr}}
+.fe-card{border-radius:14px;padding:18px;opacity:0;transform:translateY(20px);transition:all .5s ease}
+.fe-card.show{opacity:1;transform:translateY(0)}
+.fe-card.views{background:linear-gradient(135deg,#2a4a7f,#1e3a5f);border:1px solid #4a9eff30}
+.fe-card.views .fe-title{color:#60a5fa}
+.fe-card.stores{background:linear-gradient(135deg,#4c1d95,#3b0764);border:1px solid #a855f730}
+.fe-card.stores .fe-title{color:#c084fc}
+.fe-card.composables{background:linear-gradient(135deg,#166534,#14532d);border:1px solid #22c55e30}
+.fe-card.composables .fe-title{color:#4ade80}
+.fe-title{font-weight:700;font-size:.9rem;margin-bottom:10px}
+.fe-list{list-style:none;font-size:.8rem;font-family:monospace;color:#94a3b8}
+.fe-list li{padding:3px 0}
+
+/* Timeline */
+.timeline{position:relative;padding-left:40px}
+.timeline::before{content:'';position:absolute;left:18px;top:0;bottom:0;width:2px;background:#1e293b}
+.timeline-step{position:relative;padding:12px 0 12px 24px;opacity:0;transform:translateX(-20px);transition:all .5s ease}
+.timeline-step.show{opacity:1;transform:translateX(0)}
+.timeline-step::before{content:'';position:absolute;left:-26px;top:16px;width:12px;height:12px;border-radius:50%;background:#1e293b;border:2px solid #475569;transition:all .3s}
+.timeline-step.show::before{background:#4a9eff;border-color:#4a9eff;box-shadow:0 0 10px #4a9eff60}
+.timeline-step.show.purple-dot::before{background:#a855f7;border-color:#a855f7;box-shadow:0 0 10px #a855f760}
+.timeline-step.show.green-dot::before{background:#22c55e;border-color:#22c55e;box-shadow:0 0 10px #22c55e60}
+.timeline-step.show.orange-dot::before{background:#f59e0b;border-color:#f59e0b;box-shadow:0 0 10px #f59e0b60}
+.timeline-step.show.pink-dot::before{background:#ec4899;border-color:#ec4899;box-shadow:0 0 10px #ec489960}
+.step-num{font-size:.75rem;color:#475569;font-family:monospace}
+.step-text{font-size:.9rem;margin-top:2px}
+.step-text code{background:#1e293b;padding:2px 8px;border-radius:4px;font-size:.8rem;font-family:monospace;color:#4a9eff}
+
+/* RAG */
+.rag-pipeline{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;align-items:stretch}
+.rag-phase{flex:1;min-width:220px;max-width:300px;border-radius:14px;padding:20px;opacity:0;transform:translateY(20px);transition:all .5s ease;display:flex;flex-direction:column}
+.rag-phase.show{opacity:1;transform:translateY(0)}
+.rag-phase.p1{background:linear-gradient(135deg,#2a4a7f,#1e3a5f);border:1px solid #4a9eff30}
+.rag-phase.p1 .rag-title{color:#60a5fa}
+.rag-phase.p2{background:linear-gradient(135deg,#4c1d95,#3b0764);border:1px solid #a855f730}
+.rag-phase.p2 .rag-title{color:#c084fc}
+.rag-phase.p3{background:linear-gradient(135deg,#166534,#14532d);border:1px solid #22c55e30}
+.rag-phase.p3 .rag-title{color:#4ade80}
+.rag-title{font-weight:700;font-size:.95rem;margin-bottom:10px}
+.rag-desc{font-size:.8rem;color:#94a3b8;margin-bottom:10px}
+.rag-items{list-style:none;font-size:.8rem;font-family:monospace;color:#94a3b8}
+.rag-items li{padding:3px 0}
+.rag-merge{text-align:center;margin-top:20px;opacity:0;transition:opacity .5s}
+.rag-merge.show{opacity:1}
+.rag-merge-box{display:inline-block;padding:14px 30px;border-radius:12px;background:linear-gradient(135deg,#92400e,#78350f);border:1px solid #f59e0b40;color:#fbbf24;font-weight:700;font-size:.9rem;box-shadow:0 0 20px #f59e0b20}
+.rag-arrows{display:flex;justify-content:center;gap:60px;color:#475569;font-size:1.2rem;margin:8px 0;opacity:0;transition:opacity .5s}
+.rag-arrows.show{opacity:1}
+.rag-arrows span{animation:flowDown 1.5s infinite}
+
+/* Feature matrix */
+.feature-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+@media(max-width:900px){.feature-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:600px){.feature-grid{grid-template-columns:repeat(2,1fr)}}
+.feature-card{border-radius:12px;padding:18px;text-align:center;opacity:0;transform:scale(0.8);transition:all .4s ease;background:#1a1a2e;border:1px solid #1e293b}
+.feature-card.show{opacity:1;transform:scale(1)}
+.feature-card:hover{border-color:#4a9eff40;box-shadow:0 0 15px #4a9eff15;transform:scale(1.03)}
+.feature-icon{font-size:1.6rem;margin-bottom:8px}
+.feature-name{font-size:.85rem;font-weight:700;color:#e2e8f0;margin-bottom:4px}
+.feature-desc{font-size:.7rem;color:#6b7280}
+
+/* Replay */
+.replay-wrap{text-align:center;margin:40px 0 60px}
+.replay-btn{background:linear-gradient(135deg,#4a9eff,#a855f7);color:#fff;border:none;padding:14px 36px;border-radius:12px;font-size:1rem;font-weight:600;cursor:pointer;transition:transform .2s,box-shadow .2s}
+.replay-btn:hover{transform:translateY(-2px);box-shadow:0 8px 25px #4a9eff40}
+
+/* Sidebar */
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:240px;background:linear-gradient(180deg,#13132a,#0f0f1a);border-right:1px solid #1e293b;z-index:200;display:flex;flex-direction:column;transition:width .3s cubic-bezier(.4,0,.2,1),transform .3s cubic-bezier(.4,0,.2,1);overflow:hidden}
+.sidebar.collapsed{width:52px}
+.sidebar__header{display:flex;align-items:center;justify-content:space-between;padding:18px 16px 14px;border-bottom:1px solid #1e293b;flex-shrink:0;min-height:56px}
+.sidebar__logo{font-size:.95rem;font-weight:700;background:linear-gradient(135deg,#4a9eff,#a855f7);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;white-space:nowrap;overflow:hidden;transition:opacity .2s}
+.sidebar.collapsed .sidebar__logo{opacity:0;width:0}
+.sidebar__toggle{width:28px;height:28px;border-radius:6px;border:1px solid #1e293b;background:#0f0f1a;color:#6b7280;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0}
+.sidebar__toggle:hover{background:#1e293b;color:#e2e8f0;border-color:#475569}
+.sidebar__toggle svg{width:16px;height:16px;transition:transform .3s}
+.sidebar.collapsed .sidebar__toggle svg{transform:rotate(180deg)}
+.sidebar__nav{flex:1;overflow-y:auto;padding:12px 8px;scrollbar-width:thin;scrollbar-color:#1e293b transparent}
+.sidebar__nav::-webkit-scrollbar{width:3px}
+.sidebar__nav::-webkit-scrollbar-thumb{background:#1e293b;border-radius:2px}
+.sidebar__item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;cursor:pointer;transition:all .2s;color:#6b7280;text-decoration:none;margin-bottom:2px;white-space:nowrap;overflow:hidden}
+.sidebar__item:hover{background:#1e293b;color:#e2e8f0}
+.sidebar__item.active{background:linear-gradient(135deg,#4a9eff15,#a855f710);color:#4a9eff;border:1px solid #4a9eff25}
+.sidebar__item-icon{width:22px;height:22px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:.8rem;flex-shrink:0;background:#1e293b;transition:all .2s}
+.sidebar__item.active .sidebar__item-icon{background:linear-gradient(135deg,#4a9eff30,#a855f720)}
+.sidebar__item-text{font-size:.82rem;font-weight:500;transition:opacity .2s,width .2s;overflow:hidden}
+.sidebar.collapsed .sidebar__item-text{opacity:0;width:0}
+.sidebar.collapsed .sidebar__item{justify-content:center;padding:10px 0}
+.sidebar__footer{padding:12px 16px;border-top:1px solid #1e293b;flex-shrink:0}
+.sidebar__footer-text{font-size:.7rem;color:#475569;white-space:nowrap;overflow:hidden;transition:opacity .2s}
+.sidebar.collapsed .sidebar__footer-text{opacity:0}
+
+/* Main content shift */
+body{padding-left:240px;transition:padding-left .3s cubic-bezier(.4,0,.2,1)}
+body.sidebar-collapsed{padding-left:52px}
+
+/* Hide old nav dots */
+.nav-dots{display:none}
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar__header">
+    <span class="sidebar__logo">Ai-Curton</span>
+    <button class="sidebar__toggle" id="sidebarToggle" title="收起/展开">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="15 18 9 12 15 6"></polyline>
+      </svg>
+    </button>
+  </div>
+  <nav class="sidebar__nav" id="sidebarNav">
+    <a class="sidebar__item" data-target="s1"><span class="sidebar__item-icon">🏗</span><span class="sidebar__item-text">项目总览</span></a>
+    <a class="sidebar__item" data-target="s2"><span class="sidebar__item-icon">📐</span><span class="sidebar__item-text">系统架构总览</span></a>
+    <a class="sidebar__item" data-target="s3"><span class="sidebar__item-icon">⚙</span><span class="sidebar__item-text">后端分层架构</span></a>
+    <a class="sidebar__item" data-target="s4"><span class="sidebar__item-icon">🤖</span><span class="sidebar__item-text">AI Agent 子系统</span></a>
+    <a class="sidebar__item" data-target="s5"><span class="sidebar__item-icon">🔀</span><span class="sidebar__item-text">DAG 工作流编排</span></a>
+    <a class="sidebar__item" data-target="s6"><span class="sidebar__item-icon">🖥</span><span class="sidebar__item-text">前端架构</span></a>
+    <a class="sidebar__item" data-target="s7"><span class="sidebar__item-icon">🔄</span><span class="sidebar__item-text">数据流全景</span></a>
+    <a class="sidebar__item" data-target="s8"><span class="sidebar__item-icon">🧠</span><span class="sidebar__item-text">RAG 与知识体系</span></a>
+    <a class="sidebar__item" data-target="s9"><span class="sidebar__item-icon">✨</span><span class="sidebar__item-text">核心特性矩阵</span></a>
+  </nav>
+  <div class="sidebar__footer">
+    <div class="sidebar__footer-text">架构全景 v1.0</div>
+  </div>
+</aside>
+
+<!-- Navigation dots -->
+<div class="nav-dots" id="navDots">
+  <div class="nav-dot" data-target="s1" title="项目总览"></div>
+  <div class="nav-dot" data-target="s2" title="系统架构"></div>
+  <div class="nav-dot" data-target="s3" title="后端分层"></div>
+  <div class="nav-dot" data-target="s4" title="AI Agent"></div>
+  <div class="nav-dot" data-target="s5" title="DAG 工作流"></div>
+  <div class="nav-dot" data-target="s6" title="前端架构"></div>
+  <div class="nav-dot" data-target="s7" title="数据流"></div>
+  <div class="nav-dot" data-target="s8" title="RAG 知识"></div>
+  <div class="nav-dot" data-target="s9" title="特性矩阵"></div>
+</div>
+
+<div class="container">
+  <h1>Ai-Curton 创意工坊</h1>
+  <p class="subtitle">AI 驱动的小说辅助创作全栈平台 — 项目架构全景</p>
+
+  <!-- Section 1: 项目总览 -->
+  <section id="s1">
+    <div class="section-title">
+      <span class="icon" style="background:#1e293b">🏗</span>
+      项目总览
+    </div>
+    <div class="hero-stats" id="hero-stats">
+      <div class="stat-card c1">
+        <div class="stat-label">后端</div>
+        <div class="stat-value">Go + Gin</div>
+        <div class="stat-desc">GORM / 分层架构 / RESTful</div>
+      </div>
+      <div class="stat-card c2">
+        <div class="stat-label">前端</div>
+        <div class="stat-value">Vue 3 + Pinia</div>
+        <div class="stat-desc">TypeScript / Tailwind CSS</div>
+      </div>
+      <div class="stat-card c3">
+        <div class="stat-label">AI 引擎</div>
+        <div class="stat-value">多模型分发</div>
+        <div class="stat-desc">Qwen / DeepSeek / Kimi / Zhipu</div>
+      </div>
+      <div class="stat-card c4">
+        <div class="stat-label">存储</div>
+        <div class="stat-value">MySQL + Redis + Milvus</div>
+        <div class="stat-desc">关系 / 缓存 / 向量</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 2: 系统架构总览 -->
+  <section id="s2">
+    <div class="section-title">
+      <span class="icon" style="background:#1e293b">📐</span>
+      系统架构总览
+    </div>
+    <div class="layer-stack" id="layer-stack">
+      <div class="layer-box frontend">
+        <div class="layer-name">前端层 — Vue 3 SPA</div>
+        <div class="layer-detail">Router → Views → Components → Store (Pinia) → API Layer</div>
+      </div>
+      <div class="layer-arrow"><span>▼</span></div>
+      <div class="layer-box gateway">
+        <div class="layer-name">网关层 — Gin HTTP Server</div>
+        <div class="layer-detail">HTTP RESTful + WebSocket + JWT Auth + CORS Middleware</div>
+      </div>
+      <div class="layer-arrow"><span>▼</span></div>
+      <div class="layer-box business">
+        <div class="layer-name">业务层 — Services</div>
+        <div class="layer-detail">Novel / Workflow / Knowledge / Memory / WritingStyle / ChapterSummary / Intent</div>
+      </div>
+      <div class="layer-arrow"><span>▼</span></div>
+      <div class="layer-box ai-engine">
+        <div class="layer-name">AI 引擎层 — Agent System</div>
+        <div class="layer-detail">Dispatcher → Executor → Provider (with fallback chain & token budget)</div>
+      </div>
+      <div class="layer-arrow"><span>▼</span></div>
+      <div class="layer-box orchestration">
+        <div class="layer-name">编排层 — DAG Orchestrator</div>
+        <div class="layer-detail">Graph → Node → LoopNode → ToolCalling → Condition</div>
+      </div>
+      <div class="layer-arrow"><span>▼</span></div>
+      <div class="layer-box data">
+        <div class="layer-name">数据层 — Storage</div>
+        <div class="layer-detail">MySQL (30+ tables) + Redis (cache/session) + Milvus (vector search)</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 3: 后端分层架构 -->
+  <section id="s3">
+    <div class="section-title">
+      <span class="icon" style="background:#1e293b">⚙</span>
+      后端分层架构
+    </div>
+    <div class="backend-flow" id="backend-flow">
+      <div class="flow-card handler">
+        <div class="flow-title">Handler (HTTP)</div>
+        <ul class="flow-items">
+          <li>NovelHandler</li>
+          <li>WorkflowHandler</li>
+          <li>KnowledgeHandler</li>
+          <li>MemoryHandler</li>
+          <li>WritingStyleHandler</li>
+          <li>ButlerHandler</li>
+        </ul>
+      </div>
+      <div class="flow-arrow"><span>→</span></div>
+      <div class="flow-card service">
+        <div class="flow-title">Service (Business)</div>
+        <ul class="flow-items">
+          <li>NovelService</li>
+          <li>WorkflowService</li>
+          <li>KnowledgeService</li>
+          <li>MemoryService</li>
+          <li>WritingStyleService</li>
+          <li>ChapterSummaryService</li>
+          <li>IntentService</li>
+          <li>PromptTemplateService</li>
+        </ul>
+      </div>
+      <div class="flow-arrow"><span>→</span></div>
+      <div class="flow-card dao">
+        <div class="flow-title">DAO (Data)</div>
+        <ul class="flow-items">
+          <li>NovelDAO</li>
+          <li>ChapterDAO</li>
+          <li>WorkflowDAO</li>
+          <li>KnowledgeDAO</li>
+          <li>MemoryDAO</li>
+          <li>UserDAO</li>
+        </ul>
+      </div>
+      <div class="flow-arrow"><span>→</span></div>
+      <div class="flow-card model-card">
+        <div class="flow-title">Model (DB)</div>
+        <ul class="flow-items">
+          <li>Novel / Chapter</li>
+          <li>AITask / Workflow</li>
+          <li>Knowledge / Memory</li>
+          <li>WritingStyle</li>
+          <li>PromptTemplate</li>
+          <li>User / Workspace</li>
+        </ul>
+      </div>
+    </div>
+    <div class="backend-sub" id="backend-sub">
+      <div class="flow-card service" style="opacity:0;transform:scale(0.8);transition:all .5s ease">
+        <div class="flow-title" style="color:#c084fc">Service 分支</div>
+        <ul class="flow-items"><li style="color:#6b7280">↘ AI 调用路径</li></ul>
+      </div>
+      <div class="flow-arrow"><span>→</span></div>
+      <div class="flow-card agent">
+        <div class="flow-title">Agent (AI)</div>
+        <ul class="flow-items">
+          <li>Dispatcher</li>
+          <li>ChapterTaskExecutor</li>
+          <li>OutlineTaskExecutor</li>
+          <li>ButlerTaskExecutor</li>
+        </ul>
+      </div>
+      <div class="flow-arrow"><span>→</span></div>
+      <div class="flow-card" style="background:linear-gradient(135deg,#166534,#14532d);border:1px solid #22c55e40">
+        <div class="flow-title" style="color:#4ade80">Provider (API)</div>
+        <ul class="flow-items">
+          <li>QwenProvider</li>
+          <li>DeepSeekProvider</li>
+          <li>KimiProvider</li>
+          <li>ZhipuProvider</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 4: AI Agent 子系统 -->
+  <section id="s4">
+    <div class="section-title">
+      <span class="icon" style="background:#1e293b">🤖</span>
+      AI Agent 子系统
+    </div>
+    <div class="agent-diagram" id="agent-diagram">
+      <div class="agent-row">
+        <div class="agent-node dispatcher">Dispatcher<div class="node-sub">任务路由与分发</div></div>
+      </div>
+      <div class="agent-arrows"><span>▼</span></div>
+      <div class="agent-row">
+        <div class="agent-node executor">ChapterTaskExecutor<div class="node-sub">章节生成</div></div>
+        <div class="agent-node executor">OutlineTaskExecutor<div class="node-sub">大纲生成</div></div>
+        <div class="agent-node executor">ButlerTaskExecutor<div class="node-sub">AI 管家</div></div>
+      </div>
+      <div class="agent-arrows"><span>▼</span></div>
+      <div class="agent-row">
+        <div class="agent-node provider">QwenProvider<div class="node-sub">通义千问</div></div>
+        <div class="agent-node provider">DeepSeekProvider<div class="node-sub">DeepSeek</div></div>
+        <div class="agent-node provider">KimiProvider<div class="node-sub">Moonshot</div></div>
+        <div class="agent-node provider">ZhipuProvider<div class="node-sub">智谱 GLM</div></div>
+      </div>
+      <div class="agent-arrows"><span>▼</span></div>
+      <div class="agent-row">
+        <div class="agent-node budget">Token Budget Manager<div class="node-sub">按模块分配 Token 预算</div></div>
+      </div>
+    </div>
+    <div style="margin-top:24px">
+      <div style="text-align:center;font-size:.9rem;color:#94a3b8;margin-bottom:12px">降级链路 (Fallback Chain)</div>
+      <div class="fallback-chain" id="fallback-chain">
+        <div class="fallback-step primary">Primary 调用</div>
+        <div class="fallback-arrow">→</div>
+        <div class="fallback-step retry">同 Provider 重试</div>
+        <div class="fallback-arrow">→</div>
+        <div class="fallback-step cross">跨 Provider 降级</div>
+        <div class="fallback-arrow">→</div>
+        <div class="fallback-step" style="background:#991b1b40;border:1px solid #ef444460;color:#fca5a5">返回错误</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 5: DAG 工作流编排 -->
+  <section id="s5">
+    <div class="section-title">
+      <span class="icon" style="background:#1e293b">🔀</span>
+      DAG 工作流编排
+    </div>
+    <div style="text-align:center;font-size:.9rem;color:#94a3b8;margin-bottom:16px">full_chapter 工作流</div>
+    <div class="dag-container" id="dag-full">
+      <div class="dag-layer">
+        <div class="dag-node blue"><div class="node-name">outline</div><div class="node-label">Layer 0 · 大纲生成</div></div>
+      </div>
+      <div class="dag-arrows"><span class="arrow-line">▼</span></div>
+      <div class="dag-layer">
+        <div class="dag-node purple"><div class="node-name">draft</div><div class="node-label">Layer 1 · 正文生成 (Tool Calling)</div></div>
+      </div>
+      <div class="dag-arrows"><span class="arrow-line">▼</span></div>
+      <div class="dag-layer">
+        <div class="loop-subgraph">
+          <div class="loop-subgraph-title">review_loop (LoopNode) · Layer 2</div>
+          <div class="loop-subgraph-inner">
+            <div class="dag-node green"><div class="node-name">review</div><div class="node-label">审核</div></div>
+            <span style="color:#475569;font-size:1rem">→</span>
+            <div class="condition"><span>通过?</span></div>
+            <span style="color:#475569;font-size:1rem">→</span>
+            <div class="dag-node orange"><div class="node-name">revision</div><div class="node-label">修订</div></div>
+            <div class="loop-arrow-back">↺</div>
+          </div>
+          <div style="display:flex;gap:16px;justify-content:center;margin-top:12px;font-size:.8rem;color:#6b7280">
+            <span style="background:#1e293b;padding:4px 12px;border-radius:6px">MaxRounds: 3</span>
+            <span style="background:#1e293b;padding:4px 12px;border-radius:6px">ExhaustPolicy: use_last</span>
+          </div>
+        </div>
+      </div>
+      <div class="dag-arrows"><span class="arrow-line">▼</span></div>
+      <div class="dag-layer">
+        <div class="dag-node blue"><div class="node-name">final_result</div><div class="node-label">最终输出</div></div>
+      </div>
+    </div>
+    <div class="batch-diagram" id="batch-diagram">
+      <div class="batch-title">batch_expand 工作流 — 并行章节生成</div>
+      <div class="batch-row">
+        <div class="batch-node ch">Chapter 1</div>
+        <div class="batch-node ch">Chapter 2</div>
+        <div class="batch-node ch">Chapter 3</div>
+        <div class="batch-node ch">Chapter N</div>
+      </div>
+      <div style="text-align:center;margin-top:10px;font-size:.75rem;color:#6b7280">
+        <span style="background:#1e293b;padding:4px 12px;border-radius:6px">Concurrency: configurable</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 6: 前端架构 -->
+  <section id="s6">
+    <div class="section-title">
+      <span class="icon" style="background:#1e293b">🖥</span>
+      前端架构
+    </div>
+    <div style="text-align:center;margin-bottom:16px;font-size:.85rem;color:#6b7280;font-family:monospace">
+      Router → Views → Components → Pinia Store → API Layer
+    </div>
+    <div class="fe-grid" id="fe-grid">
+      <div class="fe-card views">
+        <div class="fe-title">核心视图 (Views)</div>
+        <ul class="fe-list">
+          <li>NovelWorkshop — 主编辑器</li>
+          <li>NovelButlerPage — AI 管家</li>
+          <li>OutlineEditor — 大纲编辑</li>
+          <li>KnowledgeManager — 知识库</li>
+          <li>MemoryManager — 记忆管理</li>
+          <li>WritingStyleEditor — 风格编辑</li>
+          <li>WorkspaceSelector — 工作区</li>
+        </ul>
+      </div>
+      <div class="fe-card stores">
+        <div class="fe-title">状态管理 (Pinia Stores)</div>
+        <ul class="fe-list">
+          <li>novelStore — 小说数据</li>
+          <li>workflowStore — 工作流状态</li>
+          <li>knowledgeStore — 知识库</li>
+          <li>memoryStore — 记忆数据</li>
+          <li>modelStore — AI 模型配置</li>
+          <li>userStore — 用户认证</li>
+          <li>workspaceStore — 工作区</li>
+          <li>butlerStore — AI 管家</li>
+        </ul>
+      </div>
+      <div class="fe-card composables">
+        <div class="fe-title">组合式函数 (Composables)</div>
+        <ul class="fe-list">
+          <li>useNovelButler — 管家交互</li>
+          <li>useWorkflowPolling — 轮询状态</li>
+          <li>useAutoComplete — 智能联想</li>
+          <li>useWebSocket — 实时通信</li>
+          <li>useVersionHistory — 版本管理</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 7: 数据流全景 -->
+  <section id="s7">
+    <div class="section-title">
+      <span class="icon" style="background:#1e293b">🔄</span>
+      数据流全景 — 用户点击「生成章节」
+    </div>
+    <div class="timeline" id="dataflow-timeline">
+      <div class="timeline-step">
+        <div class="step-num">Step 1</div>
+        <div class="step-text">用户点击「生成章节」→ <code>handleFullChapter()</code></div>
+      </div>
+      <div class="timeline-step purple-dot">
+        <div class="step-num">Step 2</div>
+        <div class="step-text">前端调用 <code>workflowStore.submitWorkflow()</code></div>
+      </div>
+      <div class="timeline-step orange-dot">
+        <div class="step-num">Step 3</div>
+        <div class="step-text">HTTP POST → <code>WorkflowHandler.Submit()</code></div>
+      </div>
+      <div class="timeline-step pink-dot">
+        <div class="step-num">Step 4</div>
+        <div class="step-text"><code>WorkflowService</code> → <code>BuildFullChapterGraph()</code> 构建 DAG</div>
+      </div>
+      <div class="timeline-step green-dot">
+        <div class="step-num">Step 5</div>
+        <div class="step-text">DAG 引擎执行: <code>outline → draft (tools) → review_loop</code></div>
+      </div>
+      <div class="timeline-step pink-dot">
+        <div class="step-num">Step 6</div>
+        <div class="step-text"><code>Provider.GenerateText()</code> 调用 AI，含 fallback 降级</div>
+      </div>
+      <div class="timeline-step purple-dot">
+        <div class="step-num">Step 7</div>
+        <div class="step-text">WebSocket 推送进度 → 前端实时更新 UI</div>
+      </div>
+      <div class="timeline-step green-dot">
+        <div class="step-num">Step 8</div>
+        <div class="step-text">用户确认接受 → 版本保存至 MySQL</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 8: RAG 与知识体系 -->
+  <section id="s8">
+    <div class="section-title">
+      <span class="icon" style="background:#1e293b">🧠</span>
+      RAG 与知识体系
+    </div>
+    <div style="text-align:center;font-size:.85rem;color:#6b7280;margin-bottom:16px">三阶段 RAG 管线 → 注入 Prompt 上下文</div>
+    <div class="rag-pipeline" id="rag-pipeline">
+      <div class="rag-phase p1">
+        <div class="rag-title">Phase 1: 知识图谱</div>
+        <div class="rag-desc">结构化世界观数据</div>
+        <ul class="rag-items">
+          <li>人物设定 (Character)</li>
+          <li>世界观 (WorldView)</li>
+          <li>伏笔线索 (Foreshadow)</li>
+          <li>剧情线 (PlotLine)</li>
+        </ul>
+      </div>
+      <div class="rag-phase p2">
+        <div class="rag-title">Phase 2: 记忆嵌入</div>
+        <div class="rag-desc">Milvus 向量检索</div>
+        <ul class="rag-items">
+          <li>章节内容向量化</li>
+          <li>语义相似度搜索</li>
+          <li>Top-K 相关片段召回</li>
+          <li>动态上下文窗口</li>
+        </ul>
+      </div>
+      <div class="rag-phase p3">
+        <div class="rag-title">Phase 3: 递归摘要树</div>
+        <div class="rag-desc">Chapter Summary Tree</div>
+        <ul class="rag-items">
+          <li>章节级摘要</li>
+          <li>卷级聚合摘要</li>
+          <li>全书递归压缩</li>
+          <li>上下文预算分配</li>
+        </ul>
+      </div>
+    </div>
+    <div class="rag-arrows" id="rag-arrows"><span>▼</span><span>▼</span><span>▼</span></div>
+    <div class="rag-merge" id="rag-merge">
+      <div class="rag-merge-box">Prompt Context 注入 → AI 生成</div>
+    </div>
+  </section>
+
+  <!-- Section 9: 核心特性矩阵 -->
+  <section id="s9">
+    <div class="section-title">
+      <span class="icon" style="background:#1e293b">✨</span>
+      核心特性矩阵
+    </div>
+    <div class="feature-grid" id="feature-grid">
+      <div class="feature-card"><div class="feature-icon">🔀</div><div class="feature-name">多模型智能分发与降级</div><div class="feature-desc">自动路由至最优模型，故障时跨 Provider 降级</div></div>
+      <div class="feature-card"><div class="feature-icon">📊</div><div class="feature-name">DAG 工作流编排引擎</div><div class="feature-desc">有向无环图驱动多步骤任务编排</div></div>
+      <div class="feature-card"><div class="feature-icon">🔄</div><div class="feature-name">审核-修订循环</div><div class="feature-desc">LoopNode 实现可配置轮次的审修循环</div></div>
+      <div class="feature-card"><div class="feature-icon">🛠</div><div class="feature-name">Function Calling</div><div class="feature-desc">AI 调用知识库/记忆等工具增强生成</div></div>
+      <div class="feature-card"><div class="feature-icon">🧠</div><div class="feature-name">RAG 三阶段知识注入</div><div class="feature-desc">知识图谱 + 向量检索 + 递归摘要</div></div>
+      <div class="feature-card"><div class="feature-icon">🌳</div><div class="feature-name">递归摘要树上下文</div><div class="feature-desc">多层级摘要压缩，突破上下文窗口限制</div></div>
+      <div class="feature-card"><div class="feature-icon">💡</div><div class="feature-name">智能联想 AutoComplete</div><div class="feature-desc">编辑器内实时 AI 续写建议</div></div>
+      <div class="feature-card"><div class="feature-icon">🎨</div><div class="feature-name">写作风格管理</div><div class="feature-desc">自定义风格模板，控制 AI 输出调性</div></div>
+      <div class="feature-card"><div class="feature-icon">📝</div><div class="feature-name">版本历史与对比</div><div class="feature-desc">章节多版本管理，支持 diff 对比</div></div>
+      <div class="feature-card"><div class="feature-icon">📡</div><div class="feature-name">WebSocket 实时推送</div><div class="feature-desc">生成进度、状态变更实时通知前端</div></div>
+      <div class="feature-card"><div class="feature-icon">💰</div><div class="feature-name">Token Budget 管理</div><div class="feature-desc">按模块分配 Token 预算，控制成本</div></div>
+      <div class="feature-card"><div class="feature-icon">⚡</div><div class="feature-name">批量章节生成</div><div class="feature-desc">并行生成多章节，可控并发度</div></div>
+    </div>
+  </section>
+
+  <div class="replay-wrap">
+    <button class="replay-btn" onclick="replay()">重新播放</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  // IntersectionObserver for scroll-triggered animations
+  var observer = new IntersectionObserver(function(entries){
+    entries.forEach(function(entry){
+      if(entry.isIntersecting){
+        entry.target.classList.add('visible');
+        animateSection(entry.target.id);
+      }
+    });
+  },{threshold:0.15});
+
+  document.querySelectorAll('section').forEach(function(s){observer.observe(s);});
+
+  // Sidebar toggle
+  var sidebar = document.getElementById('sidebar');
+  var sidebarToggle = document.getElementById('sidebarToggle');
+  sidebarToggle.addEventListener('click', function(){
+    sidebar.classList.toggle('collapsed');
+    document.body.classList.toggle('sidebar-collapsed');
+  });
+
+  // Sidebar nav: active tracking — only highlight the topmost visible section
+  var currentActive = null;
+  var sidebarObserver = new IntersectionObserver(function(entries){
+    entries.forEach(function(entry){
+      var item = document.querySelector('.sidebar__item[data-target="'+entry.target.id+'"]');
+      if(!item) return;
+      if(entry.isIntersecting){
+        if(currentActive && currentActive !== item) currentActive.classList.remove('active');
+        item.classList.add('active');
+        currentActive = item;
+      }
+    });
+  },{threshold:0.05, rootMargin:'-10% 0px -80% 0px'});
+  document.querySelectorAll('section').forEach(function(s){sidebarObserver.observe(s);});
+
+  // Sidebar nav: click to scroll (with offset so section title isn't hidden)
+  document.querySelectorAll('.sidebar__item').forEach(function(item){
+    item.addEventListener('click',function(){
+      var t=document.getElementById(item.dataset.target);
+      if(!t) return;
+      var y = t.getBoundingClientRect().top + window.pageYOffset - 20;
+      window.scrollTo({top:y, behavior:'smooth'});
+    });
+  });
+
+  // Legacy nav-dot click (kept for compatibility)
+  document.querySelectorAll('.nav-dot').forEach(function(d){
+    d.addEventListener('click',function(){
+      var t=document.getElementById(d.dataset.target);
+      if(t) t.scrollIntoView({behavior:'smooth',block:'start'});
+    });
+  });
+
+  // Stagger helper
+  function staggerShow(selector, container, delay){
+    var els = (container||document).querySelectorAll(selector);
+    els.forEach(function(el,i){
+      setTimeout(function(){el.classList.add('show');},i*delay);
+    });
+  }
+
+  // Track animated sections
+  var animated = {};
+
+  function animateSection(id){
+    if(animated[id]) return;
+    animated[id] = true;
+
+    switch(id){
+      case 's1':
+        staggerShow('.stat-card', document.getElementById('hero-stats'), 200);
+        break;
+      case 's2':
+        var stack = document.getElementById('layer-stack');
+        var boxes = stack.querySelectorAll('.layer-box');
+        var arrows = stack.querySelectorAll('.layer-arrow');
+        boxes.forEach(function(b,i){
+          setTimeout(function(){b.classList.add('show');},i*300);
+        });
+        arrows.forEach(function(a,i){
+          setTimeout(function(){a.classList.add('show');},i*300+150);
+        });
+        break;
+      case 's3':
+        var flow = document.getElementById('backend-flow');
+        var cards = flow.querySelectorAll('.flow-card');
+        var farrows = flow.querySelectorAll('.flow-arrow');
+        cards.forEach(function(c,i){setTimeout(function(){c.classList.add('show');},i*300);});
+        farrows.forEach(function(a,i){setTimeout(function(){a.classList.add('show');},i*300+150);});
+        // Sub flow
+        setTimeout(function(){
+          var sub = document.getElementById('backend-sub');
+          var sc = sub.querySelectorAll('.flow-card');
+          var sa = sub.querySelectorAll('.flow-arrow');
+          sc.forEach(function(c,i){setTimeout(function(){c.style.opacity='1';c.style.transform='scale(1)';c.classList.add('show');},i*250);});
+          sa.forEach(function(a,i){setTimeout(function(){a.classList.add('show');},i*250+120);});
+        },1200);
+        break;
+      case 's4':
+        var diag = document.getElementById('agent-diagram');
+        var nodes = diag.querySelectorAll('.agent-node');
+        var aarrows = diag.querySelectorAll('.agent-arrows');
+        nodes.forEach(function(n,i){setTimeout(function(){n.classList.add('show');},i*200);});
+        aarrows.forEach(function(a,i){setTimeout(function(){a.classList.add('show');},i*200+100);});
+        // Fallback chain
+        setTimeout(function(){
+          var chain = document.getElementById('fallback-chain');
+          var steps = chain.querySelectorAll('.fallback-step');
+          var farr = chain.querySelectorAll('.fallback-arrow');
+          steps.forEach(function(s,i){setTimeout(function(){s.classList.add('show');},i*250);});
+          farr.forEach(function(a,i){setTimeout(function(){a.classList.add('show');},i*250+120);});
+        },1800);
+        break;
+      case 's5':
+        var dag = document.getElementById('dag-full');
+        var dnodes = dag.querySelectorAll('.dag-node');
+        var darrows = dag.querySelectorAll('.dag-arrows');
+        dnodes.forEach(function(n,i){setTimeout(function(){n.classList.add('show');},i*350);});
+        darrows.forEach(function(a,i){setTimeout(function(){a.classList.add('show');},i*350+180);});
+        // Batch
+        setTimeout(function(){
+          staggerShow('.batch-node', document.getElementById('batch-diagram'), 200);
+        },2500);
+        break;
+      case 's6':
+        staggerShow('.fe-card', document.getElementById('fe-grid'), 300);
+        break;
+      case 's7':
+        var tl = document.getElementById('dataflow-timeline');
+        var steps = tl.querySelectorAll('.timeline-step');
+        steps.forEach(function(s,i){setTimeout(function(){s.classList.add('show');},i*350);});
+        break;
+      case 's8':
+        staggerShow('.rag-phase', document.getElementById('rag-pipeline'), 350);
+        setTimeout(function(){
+          document.getElementById('rag-arrows').classList.add('show');
+        },1200);
+        setTimeout(function(){
+          document.getElementById('rag-merge').classList.add('show');
+        },1600);
+        break;
+      case 's9':
+        staggerShow('.feature-card', document.getElementById('feature-grid'), 120);
+        break;
+    }
+  }
+
+  // Replay
+  window.replay = function(){
+    animated = {};
+    document.querySelectorAll('section').forEach(function(s){s.classList.remove('visible');});
+    document.querySelectorAll('.stat-card,.layer-box,.flow-card,.agent-node,.dag-node,.fe-card,.timeline-step,.rag-phase,.feature-card,.fallback-step,.batch-node').forEach(function(e){e.classList.remove('show');});
+    document.querySelectorAll('.layer-arrow,.flow-arrow,.agent-arrows,.dag-arrows,.fallback-arrow,.rag-arrows,.rag-merge').forEach(function(e){e.classList.remove('show');});
+    document.querySelectorAll('.sidebar__item').forEach(function(e){e.classList.remove('active');});
+    // Reset backend-sub inline styles
+    var subCards = document.getElementById('backend-sub').querySelectorAll('.flow-card');
+    subCards.forEach(function(c){c.style.opacity='0';c.style.transform='scale(0.8)';});
+    window.scrollTo({top:0,behavior:'smooth'});
+    setTimeout(function(){
+      document.querySelectorAll('section').forEach(function(s){observer.observe(s);});
+    },600);
+  };
+})();
+</script>
+</body>
+</html>

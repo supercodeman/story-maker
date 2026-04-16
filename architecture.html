@@ -1,0 +1,818 @@
+<\!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Ai-Curton Architecture v2</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+/* Dark Mode (default) */
+:root,[data-theme="dark"]{--bg:#0F1117;--cbg:#1A1D2E;--p:#7C8CF8;--t:#E8EAF6;--td:#9CA3C0;--s:#22C55E;--e:#EF4444;--w:#F59E0B;--ac:#22D3EE;--nb:#0a0c14;--ndb:#232640;--bd:rgba(124,140,248,.2);--ln:rgba(124,140,248,.3);--gl:0 0 15px rgba(124,140,248,.15);--gs:0 0 25px rgba(124,140,248,.3);--on-p:#FFFFFF;--tag-p-bg:rgba(124,140,248,.15);--tag-s-bg:rgba(34,197,94,.15);--tag-w-bg:rgba(245,158,11,.15);--tag-a-bg:rgba(34,211,238,.15);--tag-e-bg:rgba(239,68,68,.15);--th-bg:rgba(124,140,248,.08);--tr-hover:rgba(124,140,248,.03);--td-border:rgba(124,140,248,.08);--layer-cl:rgba(34,211,238,.3);--layer-sv:rgba(124,140,248,.3);--layer-inf:rgba(34,197,94,.3)}
+/* Light Mode */
+[data-theme="light"]{--bg:#F8FAFC;--cbg:#FFFFFF;--p:#4F46E5;--t:#1E293B;--td:#475569;--s:#059669;--e:#DC2626;--w:#D97706;--ac:#0891B2;--nb:#FFFFFF;--ndb:#F1F5F9;--bd:rgba(79,70,229,.15);--ln:rgba(79,70,229,.25);--gl:0 2px 8px rgba(0,0,0,.06);--gs:0 4px 16px rgba(79,70,229,.12);--on-p:#FFFFFF;--tag-p-bg:rgba(79,70,229,.1);--tag-s-bg:rgba(5,150,105,.1);--tag-w-bg:rgba(217,119,6,.1);--tag-a-bg:rgba(8,145,178,.1);--tag-e-bg:rgba(220,38,38,.1);--th-bg:rgba(79,70,229,.05);--tr-hover:rgba(79,70,229,.03);--td-border:rgba(79,70,229,.06);--layer-cl:rgba(8,145,178,.25);--layer-sv:rgba(79,70,229,.25);--layer-inf:rgba(5,150,105,.25)}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;font-size:14px}
+body{background:var(--bg);color:var(--t);font-family:'JetBrains Mono',monospace;line-height:1.6;overflow-x:hidden;transition:background .3s,color .3s}
+nav{position:fixed;left:0;top:0;width:220px;height:100vh;background:var(--nb);border-right:1px solid var(--bd);z-index:100;display:flex;flex-direction:column;padding:20px 0;overflow-y:auto;transition:transform .3s,background .3s}
+nav .logo{font-family:'Orbitron',sans-serif;font-size:1.05rem;font-weight:900;color:var(--p);text-align:center;padding:10px 16px 16px;letter-spacing:2px;text-shadow:0 0 10px rgba(124,140,248,.5)}
+.theme-toggle{display:flex;align-items:center;justify-content:center;gap:6px;padding:8px 20px;margin:0 16px 16px;border:1px solid var(--bd);border-radius:8px;background:var(--ndb);cursor:pointer;transition:all .3s;font-size:.72rem;color:var(--td)}
+.theme-toggle:hover{border-color:var(--p);color:var(--p)}
+.theme-toggle svg{width:14px;height:14px;stroke:currentColor;fill:none}
+nav a{display:block;padding:10px 20px;color:var(--td);text-decoration:none;font-size:.72rem;transition:all .3s;border-left:3px solid transparent}
+nav a:hover,nav a.active{color:var(--p);background:rgba(124,140,248,.05);border-left-color:var(--p)}
+.ham{display:none;position:fixed;top:12px;left:12px;z-index:200;background:var(--nb);border:1px solid var(--bd);border-radius:6px;padding:8px 10px;cursor:pointer}
+.ham span{display:block;width:20px;height:2px;background:var(--t);margin:4px 0}
+main{margin-left:220px;max-width:1200px;padding:32px 32px 64px}
+section{margin-bottom:48px}
+h2{font-family:'Orbitron',sans-serif;font-size:1.35rem;font-weight:700;color:var(--p);margin-bottom:24px;text-shadow:0 0 12px rgba(124,140,248,.3);letter-spacing:1px}
+h3{font-family:'Orbitron',sans-serif;font-size:.9rem;font-weight:700;color:var(--ac);margin:16px 0 12px}
+.card{background:var(--cbg);border:1px solid var(--bd);border-radius:12px;padding:28px;margin-bottom:24px;box-shadow:var(--gl);opacity:0;transform:translateY(30px);transition:opacity .6s,transform .6s,box-shadow .3s}
+.card.v{opacity:1;transform:translateY(0)}.card:hover{box-shadow:var(--gs)}
+.nd{background:var(--ndb);border-radius:8px;padding:10px 18px;display:inline-flex;align-items:center;gap:6px;font-size:.8rem;color:var(--t);border:1px solid var(--bd);transition:all .3s;cursor:default;white-space:nowrap}
+.nd:hover{border-color:var(--p);box-shadow:var(--gs);transform:translateY(-2px)}
+.nd.np{border-color:var(--p);color:var(--p)}.nd.ns{border-color:var(--s);color:var(--s)}.nd.nw{border-color:var(--w);color:var(--w)}.nd.ne{border-color:var(--e);color:var(--e)}.nd.na{border-color:var(--ac);color:var(--ac)}
+.fw{display:flex;flex-wrap:wrap;gap:12px;align-items:center}.fc{display:flex;flex-direction:column;align-items:center;gap:4px}.fr{display:flex;align-items:center;gap:8px}
+.cline{width:30px;height:2px;background:var(--ln);flex-shrink:0}.cline.an{background:linear-gradient(90deg,var(--ln),var(--p),var(--ln));background-size:200% 100%;animation:fh 2s linear infinite}
+@keyframes fh{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.ca{width:0;height:0;border-top:5px solid transparent;border-bottom:5px solid transparent;border-left:7px solid var(--p);flex-shrink:0}
+.clv{width:2px;height:24px;background:var(--ln);margin:0 auto}.cad{width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:7px solid var(--p);margin:0 auto}
+.layer{border:1px solid var(--bd);border-radius:12px;padding:20px;margin-bottom:8px;position:relative}
+.layer-label{position:absolute;top:-10px;left:20px;background:var(--bg);padding:0 10px;font-family:'Orbitron',sans-serif;font-size:.72rem;font-weight:700;letter-spacing:1px}
+.layer.cl{border-color:var(--layer-cl)}.layer.cl .layer-label{color:var(--ac)}
+.layer.sv{border-color:var(--layer-sv)}.layer.sv .layer-label{color:var(--p)}
+.layer.inf{border-color:var(--layer-inf)}.layer.inf .layer-label{color:var(--s)}
+.tag{display:inline-block;padding:2px 10px;border-radius:20px;font-size:.68rem;font-weight:500}
+.tp{background:var(--tag-p-bg);color:var(--p)}.ts{background:var(--tag-s-bg);color:var(--s)}.tw{background:var(--tag-w-bg);color:var(--w)}.ta{background:var(--tag-a-bg);color:var(--ac)}.te{background:var(--tag-e-bg);color:var(--e)}
+table{width:100%;border-collapse:collapse;font-size:.8rem}
+th{text-align:left;padding:10px 14px;background:var(--th-bg);color:var(--p);font-weight:500;border-bottom:1px solid var(--bd)}
+td{padding:10px 14px;border-bottom:1px solid var(--td-border);color:var(--td)}
+tr:hover td{background:var(--tr-hover)}
+.tree{font-size:.78rem;color:var(--td);line-height:2.2}.tree .d{color:var(--ac)}.tree .f{color:var(--td)}
+.fb{display:flex;gap:24px}.f1{flex:1;min-width:0}
+.stagger .nd{opacity:0;animation:fadeInUp .5s forwards}
+@keyframes fadeInUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+.stagger .nd:nth-child(1){animation-delay:.05s}.stagger .nd:nth-child(2){animation-delay:.1s}.stagger .nd:nth-child(3){animation-delay:.15s}.stagger .nd:nth-child(4){animation-delay:.2s}.stagger .nd:nth-child(5){animation-delay:.25s}.stagger .nd:nth-child(6){animation-delay:.3s}.stagger .nd:nth-child(7){animation-delay:.35s}.stagger .nd:nth-child(8){animation-delay:.4s}
+code{color:var(--p);background:var(--tag-p-bg);padding:2px 6px;border-radius:4px;font-size:.78rem}
+[data-theme="light"] .card{box-shadow:0 1px 3px rgba(0,0,0,.08)}
+[data-theme="light"] .card:hover{box-shadow:0 4px 12px rgba(79,70,229,.1)}
+[data-theme="light"] nav{box-shadow:2px 0 8px rgba(0,0,0,.04)}
+[data-theme="light"] nav .logo{text-shadow:none}
+[data-theme="light"] h2{text-shadow:none}
+[data-theme="light"] .nd{background:var(--ndb);border-color:var(--bd)}
+[data-theme="light"] .nd:hover{box-shadow:0 2px 8px rgba(79,70,229,.12)}
+@media(max-width:768px){nav{transform:translateX(-220px)}nav.open{transform:translateX(0)}.ham{display:block}main{margin-left:0;padding:20px 16px 48px}.fb{flex-direction:column}}
+</style>
+</head>
+<body>
+<div class="ham" onclick="document.querySelector('nav').classList.toggle('open')"><span></span><span></span><span></span></div>
+<nav>
+  <div class="logo">AI-CURTON</div>
+  <div class="theme-toggle" onclick="toggleTheme()">
+    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="display:none"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+    <span class="theme-label">切换亮色</span>
+  </div>
+  <a href="#s1">01 系统架构总览</a>
+  <a href="#s2">02 前端架构</a>
+  <a href="#s3">03 页面路由布局</a>
+  <a href="#s4">04 后端分层架构</a>
+  <a href="#s5">05 AI Agent 体系</a>
+  <a href="#s6">06 编排引擎</a>
+  <a href="#s7">07 智能联想系统</a>
+  <a href="#s8">08 记忆与上下文</a>
+  <a href="#s9">09 小说工坊</a>
+  <a href="#s10">10 数据模型</a>
+  <a href="#s11">11 降级与容错</a>
+  <a href="#s12">12 工具与 Function Calling</a>
+  <a href="#s13">13 设计系统</a>
+</nav>
+<main>
+
+<\!-- ===== SECTION 1: 系统架构总览 ===== -->
+<section id="s1">
+<h2>01 / 系统架构总览</h2>
+<div class="card">
+<div class="layer cl" style="margin-top:12px">
+  <span class="layer-label">CLIENT — Vue 3 + TypeScript + Vite</span>
+  <div class="fw stagger" style="padding:8px 0">
+    <div class="nd na">Vue Router</div><div class="cline an"></div><div class="ca"></div>
+    <div class="nd na">Pinia Store</div><div class="cline an"></div><div class="ca"></div>
+    <div class="nd na">Axios API</div><div class="cline an"></div><div class="ca"></div>
+    <div class="nd na">WebSocket</div><div class="cline an"></div><div class="ca"></div>
+    <div class="nd na">InlineSuggestion</div>
+  </div>
+  <div style="padding:4px 0 4px 40px;font-size:.72rem;color:var(--td)">Views: Auth / Studio / Workspace / Portfolio / Character / Novel / Memory / Market / Wallet / Settings</div>
+  <div style="padding:0 0 4px 40px;font-size:.72rem;color:var(--td)">Components: Layout / AI / Common / Editor</div>
+</div>
+<div class="fc" style="padding:8px 0"><div class="clv"></div><div style="font-size:.65rem;color:var(--td);padding:2px 0">HTTP REST + WebSocket (SSE Push)</div><div class="cad"></div></div>
+<div class="layer sv">
+  <span class="layer-label">SERVER — Go 1.22 + Gin</span>
+  <div class="fw stagger" style="padding:8px 0">
+    <div class="nd np">Middleware (JWT/CORS)</div><div class="cline an"></div><div class="ca"></div>
+    <div class="nd np">Handler</div><div class="cline an"></div><div class="ca"></div>
+    <div class="nd np">Service</div><div class="cline an"></div><div class="ca"></div>
+    <div class="nd np">DAO</div>
+  </div>
+  <div style="margin-top:12px;padding:10px;border:1px dashed var(--bd);border-radius:8px">
+    <div style="font-size:.7rem;color:var(--p);margin-bottom:8px">AI Agent 子系统</div>
+    <div class="fw stagger">
+      <div class="nd nw">Dispatcher</div><div class="cline an"></div><div class="ca"></div>
+      <div class="nd ns">Qwen (通义)</div>
+      <div class="nd ns">Zhipu (智谱)</div>
+      <div class="nd ns">DeepSeek</div>
+      <div class="nd ns">Kimi</div>
+      <div class="nd">Mock</div>
+    </div>
+    <div style="margin-top:10px;padding:8px;border:1px dashed rgba(245,158,11,.3);border-radius:6px">
+      <div style="font-size:.68rem;color:var(--w);margin-bottom:6px">Orchestrator 编排引擎 (DAG)</div>
+      <div class="fw stagger" style="gap:8px">
+        <div class="nd nw" style="font-size:.7rem">Graph</div>
+        <div class="nd nw" style="font-size:.7rem">Engine</div>
+        <div class="nd nw" style="font-size:.7rem">SharedState</div>
+        <div class="nd nw" style="font-size:.7rem">Templates</div>
+      </div>
+    </div>
+    <div style="margin-top:10px;padding:8px;border:1px dashed rgba(34,211,238,.3);border-radius:6px">
+      <div style="font-size:.68rem;color:var(--ac);margin-bottom:6px">智能辅助子系统</div>
+      <div class="fw stagger" style="gap:8px">
+        <div class="nd na" style="font-size:.7rem">Suggestion (联想)</div>
+        <div class="nd na" style="font-size:.7rem">Intent (意图)</div>
+        <div class="nd na" style="font-size:.7rem">UserPreference</div>
+        <div class="nd na" style="font-size:.7rem">WritingStyle</div>
+        <div class="nd na" style="font-size:.7rem">Memory (RAG)</div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="fc" style="padding:8px 0"><div class="clv"></div><div style="font-size:.65rem;color:var(--td);padding:2px 0">SQL / Cache / File</div><div class="cad"></div></div>
+<div class="layer inf">
+  <span class="layer-label">INFRASTRUCTURE</span>
+  <div class="fw stagger" style="padding:8px 0">
+    <div class="nd ns">MySQL 8.0</div>
+    <div class="nd ns">Redis 7</div>
+    <div class="nd">Local Storage (uploads)</div>
+  </div>
+</div>
+</div>
+</section>
+
+<\!-- ===== SECTION 2: 前端架构 ===== -->
+<section id="s2">
+<h2>02 / 前端架构</h2>
+<div class="card" style="display:flex;gap:24px;flex-wrap:wrap">
+<div class="f1" style="min-width:320px">
+<h3>技术栈</h3>
+<table>
+<tr><th>技术</th><th>版本</th><th>用途</th></tr>
+<tr><td>Vue 3</td><td>3.x</td><td>响应式 UI 框架 (Composition API)</td></tr>
+<tr><td>TypeScript</td><td>5.x</td><td>类型安全</td></tr>
+<tr><td>Vite</td><td>5.x</td><td>构建工具 + HMR</td></tr>
+<tr><td>Element Plus</td><td>2.x</td><td>UI 组件库 (暗色主题)</td></tr>
+<tr><td>Pinia</td><td>2.x</td><td>状态管理</td></tr>
+<tr><td>Axios</td><td>1.x</td><td>HTTP 客户端 + 拦截器</td></tr>
+<tr><td>SCSS</td><td>-</td><td>主题变量 + 组件样式</td></tr>
+<tr><td>Vue Router</td><td>4.x</td><td>路由管理 + 守卫</td></tr>
+</table>
+</div>
+<div class="f1" style="min-width:280px">
+<h3>目录结构</h3>
+<div class="tree">
+<div class="d">web/src/</div>
+<div style="padding-left:20px;border-left:1px solid var(--bd);margin-left:8px">
+  <div class="d">api/ <span style="color:var(--td);font-size:.68rem">— 21 模块 API 封装</span></div>
+  <div class="d">assets/styles/ <span style="color:var(--td);font-size:.68rem">— theme.scss / global.scss</span></div>
+  <div class="d">components/ <span style="color:var(--td);font-size:.68rem">— layout / ai / common / editor</span></div>
+  <div class="d">router/ <span style="color:var(--td);font-size:.68rem">— index.ts (嵌套路由)</span></div>
+  <div class="d">store/ <span style="color:var(--td);font-size:.68rem">— 15 个 Pinia Store</span></div>
+  <div class="d">views/ <span style="color:var(--td);font-size:.68rem">— 31 个页面组件</span></div>
+  <div class="f">App.vue / main.ts</div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="card">
+<h3>Store 模块一览</h3>
+<div class="fw stagger" style="gap:8px">
+  <div class="nd na" style="font-size:.72rem">user</div>
+  <div class="nd na" style="font-size:.72rem">novel</div>
+  <div class="nd na" style="font-size:.72rem">character</div>
+  <div class="nd na" style="font-size:.72rem">workspace</div>
+  <div class="nd na" style="font-size:.72rem">portfolio</div>
+  <div class="nd na" style="font-size:.72rem">ai</div>
+  <div class="nd na" style="font-size:.72rem">workflow</div>
+  <div class="nd na" style="font-size:.72rem">conversation</div>
+  <div class="nd na" style="font-size:.72rem">memory</div>
+  <div class="nd na" style="font-size:.72rem">market</div>
+  <div class="nd na" style="font-size:.72rem">knowledge</div>
+  <div class="nd na" style="font-size:.72rem">genre</div>
+  <div class="nd na" style="font-size:.72rem">overview</div>
+  <div class="nd na" style="font-size:.72rem">wallet</div>
+  <div class="nd na" style="font-size:.72rem">writing_style</div>
+</div>
+</div>
+</section>
+
+<\!-- ===== SECTION 3: 页面路由布局 ===== -->
+<section id="s3">
+<h2>03 / 页面路由布局</h2>
+<div class="card">
+<h3>路由结构</h3>
+<table>
+<tr><th>路径</th><th>组件</th><th>说明</th></tr>
+<tr><td>/login</td><td>Login.vue</td><td>登录页</td></tr>
+<tr><td>/register</td><td>Register.vue</td><td>注册页</td></tr>
+<tr><td>/studio</td><td>AIStudio.vue</td><td>AI 工作台</td></tr>
+<tr><td>/workspace</td><td>WorkspaceList.vue</td><td>工作空间列表</td></tr>
+<tr><td>/workspace/:id</td><td>WorkspaceDetail.vue</td><td>工作空间详情</td></tr>
+<tr><td>/workspace/:id/portfolio/:pid</td><td>PortfolioDetail.vue</td><td>作品集详情</td></tr>
+<tr><td>/workspace/:wid/portfolio/:pid/novel/:nid</td><td>NovelWorkshop.vue</td><td>小说工坊（核心编辑器）</td></tr>
+<tr><td>/workspace/:wid/portfolio/:pid/novel/:nid/overview</td><td>NovelOverview.vue</td><td>小说总览</td></tr>
+<tr><td>/workspace/:wid/portfolio/:pid/novel/:nid/outline</td><td>OutlineWorkshop.vue</td><td>大纲工坊</td></tr>
+<tr><td>/characters</td><td>CharacterList.vue</td><td>角色管理</td></tr>
+<tr><td>/memories</td><td>MyMemories.vue</td><td>我的记忆库</td></tr>
+<tr><td>/market</td><td>MemoryMarket.vue</td><td>记忆市场</td></tr>
+<tr><td>/wallet</td><td>WalletPage.vue</td><td>钱包</td></tr>
+<tr><td>/settings/api-keys</td><td>APIKeyManage.vue</td><td>API Key 管理</td></tr>
+</table>
+</div>
+</section>
+
+<\!-- ===== SECTION 4: 后端分层架构 ===== -->
+<section id="s4">
+<h2>04 / 后端分层架构</h2>
+<div class="card">
+<h3>分层设计</h3>
+<div class="fw stagger" style="gap:6px;margin-bottom:16px">
+  <div class="nd np">Router (Gin)</div><div class="cline an"></div><div class="ca"></div>
+  <div class="nd np">Middleware</div><div class="cline an"></div><div class="ca"></div>
+  <div class="nd np">Handler</div><div class="cline an"></div><div class="ca"></div>
+  <div class="nd np">Service</div><div class="cline an"></div><div class="ca"></div>
+  <div class="nd np">DAO</div><div class="cline an"></div><div class="ca"></div>
+  <div class="nd ns">MySQL/Redis</div>
+</div>
+<table>
+<tr><th>层</th><th>职责</th><th>文件数</th></tr>
+<tr><td><span class="tag tp">Router</span></td><td>路由注册、中间件挂载、服务初始化与依赖注入</td><td>1</td></tr>
+<tr><td><span class="tag tp">Middleware</span></td><td>JWT 鉴权、CORS、请求日志</td><td>3</td></tr>
+<tr><td><span class="tag tp">Handler</span></td><td>请求参数校验、调用 Service、返回 JSON</td><td>24</td></tr>
+<tr><td><span class="tag ts">Service</span></td><td>业务逻辑编排、AI 调度、跨模块协调</td><td>30</td></tr>
+<tr><td><span class="tag tw">DAO</span></td><td>数据库 CRUD、GORM 查询封装</td><td>23</td></tr>
+<tr><td><span class="tag ta">Model</span></td><td>数据结构定义、表映射</td><td>23</td></tr>
+<tr><td><span class="tag te">Agent</span></td><td>AI Provider 抽象、Dispatcher、Executor、编排引擎</td><td>15</td></tr>
+</table>
+</div>
+
+<div class="card">
+<h3>Service 层模块</h3>
+<div class="fw stagger" style="gap:8px">
+  <div class="nd np" style="font-size:.72rem">NovelService</div>
+  <div class="nd np" style="font-size:.72rem">AIService</div>
+  <div class="nd np" style="font-size:.72rem">WorkflowService</div>
+  <div class="nd na" style="font-size:.72rem">SuggestionService</div>
+  <div class="nd na" style="font-size:.72rem">MemoryService</div>
+  <div class="nd na" style="font-size:.72rem">ConversationService</div>
+  <div class="nd nw" style="font-size:.72rem">UserPreferenceService</div>
+  <div class="nd nw" style="font-size:.72rem">UserBehaviorService</div>
+  <div class="nd nw" style="font-size:.72rem">IntentService</div>
+  <div class="nd nw" style="font-size:.72rem">WritingStyleService</div>
+  <div class="nd ns" style="font-size:.72rem">KnowledgeService</div>
+  <div class="nd ns" style="font-size:.72rem">PlotStructureService</div>
+  <div class="nd ns" style="font-size:.72rem">HitAnalysisService</div>
+  <div class="nd" style="font-size:.72rem">PromptTemplateService</div>
+  <div class="nd" style="font-size:.72rem">NovelSearchService</div>
+  <div class="nd" style="font-size:.72rem">NovelOverviewService</div>
+  <div class="nd" style="font-size:.72rem">CharacterService</div>
+  <div class="nd" style="font-size:.72rem">AuthService</div>
+  <div class="nd" style="font-size:.72rem">WalletService</div>
+  <div class="nd" style="font-size:.72rem">MarketService</div>
+  <div class="nd" style="font-size:.72rem">APIKeyService</div>
+</div>
+</div>
+</section>
+
+<\!-- ===== SECTION 5: AI Agent 体系 ===== -->
+<section id="s5">
+<h2>05 / AI Agent 体系</h2>
+<div class="card">
+<h3>多 Provider 架构</h3>
+<p style="font-size:.8rem;color:var(--td);margin-bottom:16px">统一 AIProvider 接口，支持多模型热切换与动态 API Key 注入</p>
+<table>
+<tr><th>Provider</th><th>默认模型</th><th>降级模型</th><th>能力</th></tr>
+<tr><td><span class="tag tw">Qwen (通义)</span></td><td>qwen-plus</td><td>qwen-turbo / qwen-long / qvq-max</td><td>text / image / embedding</td></tr>
+<tr><td><span class="tag tp">Zhipu (智谱)</span></td><td>glm-4-plus</td><td>glm-4-flash / glm-4-air</td><td>text / image / web_search</td></tr>
+<tr><td><span class="tag ts">DeepSeek</span></td><td>deepseek-chat</td><td>deepseek-reasoner</td><td>text / reasoning</td></tr>
+<tr><td><span class="tag ta">Kimi</span></td><td>moonshot-v1-8k</td><td>moonshot-v1-32k / moonshot-v1-128k</td><td>text / long_context</td></tr>
+</table>
+</div>
+
+<div class="card">
+<h3>Dispatcher 核心流程</h3>
+<div class="fw stagger" style="gap:6px;margin-bottom:16px">
+  <div class="nd np">Task 创建</div><div class="cline an"></div><div class="ca"></div>
+  <div class="nd nw">resolveKey</div><div class="cline an"></div><div class="ca"></div>
+  <div class="nd ns">GetProvider</div><div class="cline an"></div><div class="ca"></div>
+  <div class="nd na">SetAPIKey</div><div class="cline an"></div><div class="ca"></div>
+  <div class="nd np">Executor.Execute</div>
+</div>
+<p style="font-size:.78rem;color:var(--td);margin-bottom:12px">Key 解析优先级：用户自有 Key → 平台默认 Key</p>
+<table>
+<tr><th>Executor</th><th>任务类型</th><th>说明</th></tr>
+<tr><td>TextExecutor</td><td>text_generation</td><td>通用文本生成（润色/扩写/续写/对话）</td></tr>
+<tr><td>ChapterExecutor</td><td>chapter_generation</td><td>章节内容生成（含上下文构建）</td></tr>
+<tr><td>OutlineExecutor</td><td>outline_generation</td><td>大纲/概要生成</td></tr>
+<tr><td>ImageExecutor</td><td>image_generation</td><td>图片生成</td></tr>
+</table>
+</div>
+
+<div class="card">
+<h3>AIProvider 接口</h3>
+<div style="background:var(--ndb);border-radius:8px;padding:16px;font-size:.75rem;color:var(--td);line-height:1.8">
+<div>type AIProvider interface {</div>
+<div style="padding-left:20px">Name() string</div>
+<div style="padding-left:20px">GenerateText(ctx, *TextRequest) (*TextResponse, error)</div>
+<div style="padding-left:20px">GenerateImage(ctx, *ImageRequest) (*ImageResponse, error)</div>
+<div style="padding-left:20px">FallbackModels() []string</div>
+<div style="padding-left:20px">Capabilities() []string</div>
+<div>}</div>
+</div>
+</div>
+</section>
+
+<\!-- ===== SECTION 6: 编排引擎 ===== -->
+<section id="s6">
+<h2>06 / 编排引擎</h2>
+<div class="card">
+<h3>DAG 工作流架构</h3>
+<p style="font-size:.8rem;color:var(--td);margin-bottom:16px">基于有向无环图的多步骤 AI 任务编排，支持并行执行与节点间状态传递</p>
+<div class="fw stagger" style="gap:6px;margin-bottom:16px">
+  <div class="nd nw">Graph 定义</div><div class="cline an"></div><div class="ca"></div>
+  <div class="nd nw">Engine 调度</div><div class="cline an"></div><div class="ca"></div>
+  <div class="nd ns">Node 执行</div><div class="cline an"></div><div class="ca"></div>
+  <div class="nd na">SharedState 传递</div><div class="cline an"></div><div class="ca"></div>
+  <div class="nd np">Result 合并</div>
+</div>
+<table>
+<tr><th>组件</th><th>职责</th></tr>
+<tr><td><span class="tag tw">Graph</span></td><td>DAG 拓扑定义：节点、边、依赖关系</td></tr>
+<tr><td><span class="tag tw">Engine</span></td><td>拓扑排序、并行调度、错误处理</td></tr>
+<tr><td><span class="tag ta">SharedState</span></td><td>sync.RWMutex 保护的节点间状态共享（Set/Get/Snapshot）</td></tr>
+<tr><td><span class="tag tp">NodeExecutor</span></td><td>单节点执行逻辑，Prompt 模板渲染 + LLM 调用</td></tr>
+<tr><td><span class="tag ts">Templates</span></td><td>Go text/template 渲染，引用 SharedState 变量</td></tr>
+</table>
+</div>
+
+<div class="card">
+<h3>full_chapter 工作流示例</h3>
+<div style="border:1px dashed rgba(245,158,11,.3);border-radius:10px;padding:16px">
+  <div class="fw stagger" style="gap:6px;padding:4px 0">
+    <div class="nd np" style="font-size:.72rem">outline 节点</div>
+    <div class="cline an"></div><div class="ca"></div>
+    <div class="nd ns" style="font-size:.72rem">characters 节点</div>
+  </div>
+  <div class="fc" style="padding:4px 0"><div class="clv"></div><div class="cad"></div></div>
+  <div class="fw stagger" style="gap:6px;padding:4px 0">
+    <div class="nd nw" style="font-size:.72rem">scenes 节点</div>
+    <div class="cline an"></div><div class="ca"></div>
+    <div class="nd nw" style="font-size:.72rem">dialogues 节点</div>
+  </div>
+  <div class="fc" style="padding:4px 0"><div class="clv"></div><div class="cad"></div></div>
+  <div class="fw stagger" style="gap:6px;padding:4px 0">
+    <div class="nd na" style="font-size:.72rem">final_merge 节点</div>
+    <div class="cline an"></div><div class="ca"></div>
+    <div class="nd" style="font-size:.72rem">输出完整章节</div>
+  </div>
+</div>
+<p style="font-size:.75rem;color:var(--td);margin-top:12px">节点 Prompt 通过 <code>{{.state_key}}</code> 引用前置节点输出，SharedState 保证并发安全</p>
+</div>
+</section>
+
+<\!-- ===== SECTION 7: 智能联想系统 ===== -->
+<section id="s7">
+<h2>07 / 智能联想系统</h2>
+<div class="card">
+<h3>SuggestionService 架构</h3>
+<p style="font-size:.8rem;color:var(--td);margin-bottom:16px">编辑器实时联想：光标前文 → 意图推断 → Prompt 构建 → LLM 续写 50-150 字</p>
+<div class="fw stagger" style="gap:6px;margin-bottom:16px">
+  <div class="nd na">光标前文 (500字)</div><div class="cline an"></div><div class="ca"></div>
+  <div class="nd nw">IntentService</div><div class="cline an"></div><div class="ca"></div>
+  <div class="nd nw">WritingStyle</div><div class="cline an"></div><div class="ca"></div>
+  <div class="nd np">Prompt 组装</div><div class="cline an"></div><div class="ca"></div>
+  <div class="nd ns">LLM 调用</div>
+</div>
+<table>
+<tr><th>组件</th><th>输入</th><th>输出</th></tr>
+<tr><td><span class="tag ta">IntentService</span></td><td>前文文本 + novelID</td><td>意图标签（对话/描写/转场/高潮…）</td></tr>
+<tr><td><span class="tag tw">WritingStyleService</span></td><td>novelID + scenePresetID</td><td>风格规范文本（截取前200字）</td></tr>
+<tr><td><span class="tag tp">UserPreferenceDAO</span></td><td>userID + novelID</td><td>用户偏好摘要 (PromptSummary)</td></tr>
+</table>
+</div>
+
+<div class="card">
+<h3>InlineSuggestionEditor 前端</h3>
+<p style="font-size:.8rem;color:var(--td);margin-bottom:12px">基于 contenteditable 的富文本编辑器，支持实时灰色联想文本叠加</p>
+<table>
+<tr><th>特性</th><th>实现</th></tr>
+<tr><td>防抖触发</td><td>停止输入 800ms 后请求联想</td></tr>
+<tr><td>Tab 采纳</td><td>按 Tab 键将灰色联想文本插入正文</td></tr>
+<tr><td>Esc 取消</td><td>按 Esc 清除当前联想</td></tr>
+<tr><td>划词操作</td><td>选中文本弹出 AI 操作菜单（润色/扩写/续写）</td></tr>
+<tr><td>版本管理</td><td>每次 AI 采纳自动创建 ChapterVersion</td></tr>
+</table>
+</div>
+
+<div class="card">
+<h3>UserBehaviorService 行为学习</h3>
+<p style="font-size:.8rem;color:var(--td);margin-bottom:12px">追踪用户对联想的采纳/修改/拒绝行为，动态优化偏好</p>
+<div class="fw stagger" style="gap:6px;margin-bottom:12px">
+  <div class="nd na" style="font-size:.72rem">RecordAccept</div>
+  <div class="nd nw" style="font-size:.72rem">RecordModify</div>
+  <div class="nd ne" style="font-size:.72rem">RecordReject</div>
+  <div class="cline an"></div><div class="ca"></div>
+  <div class="nd np" style="font-size:.72rem">UserPreference 更新</div>
+</div>
+<p style="font-size:.75rem;color:var(--td)">当行为样本 ≥ 10 条时触发 LLM 偏好摘要提取，结果写入 PromptSummary 供后续联想使用</p>
+</div>
+</section>
+
+<\!-- ===== SECTION 8: 记忆与上下文 ===== -->
+<section id="s8">
+<h2>08 / 记忆与上下文</h2>
+<div class="card">
+<h3>三层记忆架构</h3>
+<div class="layer" style="border-color:rgba(34,211,238,.3)">
+  <span class="layer-label" style="color:var(--ac)">短期记忆 — Working Memory</span>
+  <div class="fw stagger" style="gap:12px;padding:8px 0">
+    <div class="nd na" style="padding:10px 16px">当前章节内容</div>
+    <div class="nd na" style="padding:10px 16px">划词选中文本</div>
+    <div class="nd na" style="padding:10px 16px">联想上下文 (500字)</div>
+  </div>
+  <p style="font-size:.75rem;color:var(--td);padding:4px 0">编辑器实时状态，随光标位置动态变化</p>
+</div>
+<div class="fc"><div class="clv"></div><div class="cad"></div></div>
+<div class="layer" style="border-color:rgba(124,140,248,.3)">
+  <span class="layer-label" style="color:var(--p)">中期记忆 — Session Memory</span>
+  <div class="fw stagger" style="gap:12px;padding:8px 0">
+    <div class="nd np" style="padding:10px 16px">Conversation 对话历史</div>
+    <div class="nd np" style="padding:10px 16px">SharedState (DAG)</div>
+    <div class="nd np" style="padding:10px 16px">AI Butler 会话</div>
+  </div>
+  <p style="font-size:.75rem;color:var(--td);padding:4px 0">会话级对话历史持久化，支持 <span class="tag ts">active</span> / <span class="tag tw">archived</span> 状态</p>
+</div>
+<div class="fc"><div class="clv"></div><div class="cad"></div></div>
+<div class="layer" style="border-color:rgba(245,158,11,.3)">
+  <span class="layer-label" style="color:var(--w)">长期记忆 — Creative Memory</span>
+  <div class="fw stagger" style="gap:12px;padding:8px 0">
+    <div class="nd nw" style="padding:10px 16px">Memory 记忆库 (RAG)</div>
+    <div class="nd nw" style="padding:10px 16px">ChapterVersion 版本链</div>
+    <div class="nd nw" style="padding:10px 16px">Knowledge 知识库</div>
+    <div class="nd nw" style="padding:10px 16px">UserPreference 偏好</div>
+  </div>
+  <p style="font-size:.75rem;color:var(--td);padding:4px 0">跨会话持久化的创作记忆，支持语义检索 (Embedding)</p>
+</div>
+</div>
+
+<div class="card">
+<h3>MemoryService — RAG 语义检索</h3>
+<p style="font-size:.8rem;color:var(--td);margin-bottom:12px">用户上传文档 → 分块 → Embedding → 语义检索 → 注入 Prompt</p>
+<div class="fw stagger" style="gap:6px;margin-bottom:16px">
+  <div class="nd na" style="font-size:.72rem">文档上传</div><div class="cline an"></div><div class="ca"></div>
+  <div class="nd nw" style="font-size:.72rem">文本分块</div><div class="cline an"></div><div class="ca"></div>
+  <div class="nd np" style="font-size:.72rem">Embedding 向量化</div><div class="cline an"></div><div class="ca"></div>
+  <div class="nd ns" style="font-size:.72rem">余弦相似度检索</div><div class="cline an"></div><div class="ca"></div>
+  <div class="nd" style="font-size:.72rem">Top-K 注入 Prompt</div>
+</div>
+<table>
+<tr><th>功能</th><th>说明</th></tr>
+<tr><td>Memory 绑定</td><td>将记忆库绑定到小说，章节生成时自动检索相关片段</td></tr>
+<tr><td>记忆市场</td><td>用户可发布/购买记忆库（世界观、角色设定等）</td></tr>
+<tr><td>语义检索</td><td>基于章节标题+概要构建 query，检索 Top-2 相关 chunk</td></tr>
+</table>
+</div>
+
+<div class="card">
+<h3>上下文构建：PromptTemplateData</h3>
+<p style="font-size:.78rem;color:var(--td);margin-bottom:12px">章节生成时的完整上下文组装</p>
+<table>
+<tr><th>字段</th><th>来源</th><th>说明</th></tr>
+<tr><td>NovelTitle / Description</td><td>Novel</td><td>小说元数据</td></tr>
+<tr><td>ChapterTitle / Summary / Content</td><td>Chapter</td><td>当前章节信息</td></tr>
+<tr><td>PrevSummaries / PrevContent</td><td>前序章节</td><td>前文概要 + 上一章正文截取</td></tr>
+<tr><td>KnowledgeContext</td><td>KnowledgeService</td><td>知识库 RAG 检索结果</td></tr>
+<tr><td>Characters / WorldviewNotes</td><td>KnowledgeService</td><td>角色设定 + 世界观笔记</td></tr>
+<tr><td>SelectedText / UserInstruction</td><td>用户输入</td><td>划词文本 + 用户指令</td></tr>
+<tr><td>WritingStyle / PlotStructure</td><td>Service</td><td>写作风格 + 情节结构</td></tr>
+<tr><td>RAG Chunks (Embedding)</td><td>MemoryService</td><td>记忆语义检索结果</td></tr>
+</table>
+</div>
+
+<div class="card">
+<h3>ChapterVersion 版本链</h3>
+<p style="font-size:.8rem;color:var(--td);margin-bottom:12px">每次内容变更自动创建版本，支持回退（回退也产生新版本），版本关联 AI 任务 ID 可追溯生成来源</p>
+<div style="border:1px dashed var(--bd);border-radius:8px;padding:12px">
+  <div style="font-size:.72rem;color:var(--td)">V1 <span class="tag tp">manual</span> → V2 <span class="tag tw">ai_polish</span> → V3 <span class="tag tw">ai_expand</span> → V4 <span class="tag tp">manual</span> (回退到V2) → V5 …</div>
+</div>
+</div>
+</section>
+
+<\!-- ===== SECTION 9: 小说工坊 ===== -->
+<section id="s9">
+<h2>09 / 小说工坊</h2>
+<div class="card">
+<h3>功能概览</h3>
+<table>
+<tr><th>功能</th><th>触发方式</th><th>后端 Service</th></tr>
+<tr><td>章节编辑 + 实时联想</td><td>编辑器输入停顿 800ms</td><td>SuggestionService</td></tr>
+<tr><td>AI 润色</td><td>划词 → 润色按钮</td><td>NovelService.Polish</td></tr>
+<tr><td>AI 扩写</td><td>划词 → 扩写按钮</td><td>NovelService.Expand</td></tr>
+<tr><td>AI 续写</td><td>划词 → 续写按钮</td><td>NovelService.Continue</td></tr>
+<tr><td>全章生成</td><td>工作流触发</td><td>WorkflowService (DAG)</td></tr>
+<tr><td>大纲生成</td><td>大纲工坊</td><td>NovelService.GenerateOutline</td></tr>
+<tr><td>AI 管家对话</td><td>侧边栏对话框</td><td>ConversationService</td></tr>
+<tr><td>版本回退</td><td>版本历史面板</td><td>NovelService.RevertVersion</td></tr>
+<tr><td>知识库检索</td><td>章节生成时自动</td><td>KnowledgeService</td></tr>
+<tr><td>记忆绑定</td><td>小说设置</td><td>MemoryService</td></tr>
+<tr><td>爆款分析</td><td>分析按钮</td><td>HitAnalysisService</td></tr>
+<tr><td>情节结构</td><td>时间线面板</td><td>PlotStructureService</td></tr>
+</table>
+</div>
+
+<div class="card">
+<h3>NovelWorkshop 页面布局</h3>
+<div style="display:grid;grid-template-columns:180px 1fr 200px;gap:2px;border:1px solid var(--bd);border-radius:8px;overflow:hidden;font-size:.72rem">
+  <div style="background:rgba(34,211,238,.08);padding:12px;grid-row:span 3;border-right:1px solid var(--bd)">
+    <div style="color:var(--ac);font-weight:600;margin-bottom:8px">左栏 - 章节列表</div>
+    <div style="color:var(--td)">• 章节树<br>• 新建章节<br>• 拖拽排序</div>
+  </div>
+  <div style="background:rgba(124,140,248,.05);padding:12px;border-bottom:1px solid var(--bd)">
+    <div style="color:var(--p);font-weight:600;margin-bottom:4px">顶栏 - 工具条</div>
+    <div style="color:var(--td)">字数统计 / 模型选择 / 保存状态</div>
+  </div>
+  <div style="background:rgba(245,158,11,.08);padding:12px;grid-row:span 3;border-left:1px solid var(--bd)">
+    <div style="color:var(--w);font-weight:600;margin-bottom:8px">右栏 - AI 面板</div>
+    <div style="color:var(--td)">• AI 操作<br>• 版本历史<br>• 知识库<br>• 写作风格<br>• 记忆绑定</div>
+  </div>
+  <div style="background:rgba(34,197,94,.05);padding:12px;min-height:80px">
+    <div style="color:var(--s);font-weight:600;margin-bottom:4px">中栏 - 编辑器</div>
+    <div style="color:var(--td)">InlineSuggestionEditor<br>contenteditable + 联想叠加</div>
+  </div>
+  <div style="background:rgba(239,68,68,.05);padding:12px;border-top:1px solid var(--bd)">
+    <div style="color:var(--e);font-weight:600;margin-bottom:4px">底栏 - AI 预览</div>
+    <div style="color:var(--td)">AI 生成结果预览 / Diff 对比 / 采纳/拒绝</div>
+  </div>
+</div>
+</div>
+</section>
+
+<\!-- ===== SECTION 10: 数据模型 ===== -->
+<section id="s10">
+<h2>10 / 数据模型</h2>
+<div class="card">
+<h3>核心实体关系</h3>
+<table>
+<tr><th>实体</th><th>关联</th><th>说明</th></tr>
+<tr><td><span class="tag tp">User</span></td><td>1:N Workspace</td><td>用户账户</td></tr>
+<tr><td><span class="tag tp">Workspace</span></td><td>1:N Portfolio</td><td>工作空间（团队协作）</td></tr>
+<tr><td><span class="tag tp">Portfolio</span></td><td>1:N Novel</td><td>作品集</td></tr>
+<tr><td><span class="tag ts">Novel</span></td><td>1:N Chapter</td><td>小说</td></tr>
+<tr><td><span class="tag ts">Chapter</span></td><td>1:N ChapterVersion</td><td>章节</td></tr>
+<tr><td><span class="tag tw">ChapterVersion</span></td><td>N:1 Chapter, 0:1 AITask</td><td>版本快照</td></tr>
+<tr><td><span class="tag ta">AITask</span></td><td>N:1 User</td><td>AI 任务记录</td></tr>
+<tr><td><span class="tag ta">AIWorkflow</span></td><td>1:N AIWorkflowNode</td><td>DAG 工作流实例</td></tr>
+<tr><td><span class="tag tw">Character</span></td><td>N:1 User</td><td>角色卡</td></tr>
+<tr><td><span class="tag np">Knowledge</span></td><td>N:1 Novel</td><td>知识库条目</td></tr>
+<tr><td><span class="tag np">Memory</span></td><td>N:1 User, N:N Novel</td><td>记忆库（RAG 文档）</td></tr>
+<tr><td><span class="tag ne">Conversation</span></td><td>N:1 User</td><td>AI 对话会话</td></tr>
+<tr><td><span class="tag ne">WritingStyle</span></td><td>N:1 Novel</td><td>写作风格配置</td></tr>
+<tr><td><span class="tag ne">PlotStructure</span></td><td>N:1 Novel</td><td>情节结构节点</td></tr>
+<tr><td><span class="tag ne">PromptTemplate</span></td><td>N:1 User</td><td>Prompt 模板</td></tr>
+</table>
+</div>
+
+<div class="card">
+<h3>AITask 状态机</h3>
+<div class="fw stagger" style="gap:6px">
+  <div class="nd" style="font-size:.72rem">pending</div><div class="cline an"></div><div class="ca"></div>
+  <div class="nd np" style="font-size:.72rem">running</div><div class="cline an"></div><div class="ca"></div>
+  <div class="nd ns" style="font-size:.72rem">completed</div>
+</div>
+<div class="fw stagger" style="gap:6px;margin-top:8px">
+  <div style="width:180px"></div>
+  <div class="nd np" style="font-size:.72rem">running</div><div class="cline an"></div><div class="ca"></div>
+  <div class="nd ne" style="font-size:.72rem">failed</div>
+</div>
+<div class="fw stagger" style="gap:6px;margin-top:8px">
+  <div style="width:180px"></div>
+  <div class="nd np" style="font-size:.72rem">running</div><div class="cline an"></div><div class="ca"></div>
+  <div class="nd nw" style="font-size:.72rem">cancelled</div>
+</div>
+</div>
+</section>
+
+<\!-- ===== SECTION 11: 降级与容错 ===== -->
+<section id="s11">
+<h2>11 / 降级与容错</h2>
+<div class="card">
+<h3>两层 Fallback 机制</h3>
+<p style="font-size:.8rem;color:var(--td);margin-bottom:16px">所有 LLM 调用均支持自动降级，确保服务可用性</p>
+<div class="layer" style="border-color:rgba(124,140,248,.3);margin-bottom:16px">
+  <span class="layer-label" style="color:var(--p)">第一层：同 Provider 内模型降级</span>
+  <div class="fw stagger" style="gap:6px;padding:8px 0">
+    <div class="nd np" style="font-size:.72rem">qwen-plus (默认)</div><div class="cline an"></div><div class="ca"></div>
+    <div class="nd nw" style="font-size:.72rem">qwen-turbo</div><div class="cline an"></div><div class="ca"></div>
+    <div class="nd nw" style="font-size:.72rem">qwen-long</div>
+  </div>
+  <p style="font-size:.72rem;color:var(--td);padding:4px 0">通过 Provider.FallbackModels() 获取降级列表</p>
+</div>
+<div class="layer" style="border-color:rgba(245,158,11,.3)">
+  <span class="layer-label" style="color:var(--w)">第二层：跨 Provider 降级</span>
+  <div class="fw stagger" style="gap:6px;padding:8px 0">
+    <div class="nd np" style="font-size:.72rem">Qwen (主)</div><div class="cline an"></div><div class="ca"></div>
+    <div class="nd ns" style="font-size:.72rem">Zhipu</div><div class="cline an"></div><div class="ca"></div>
+    <div class="nd nw" style="font-size:.72rem">DeepSeek</div><div class="cline an"></div><div class="ca"></div>
+    <div class="nd" style="font-size:.72rem">Kimi</div>
+  </div>
+  <p style="font-size:.72rem;color:var(--td);padding:4px 0">当同 Provider 所有模型均失败时触发</p>
+</div>
+</div>
+
+<div class="card">
+<h3>IsRetryableError 判定</h3>
+<p style="font-size:.8rem;color:var(--td);margin-bottom:12px">只有可重试错误才触发降级，其他错误直接返回</p>
+<div class="fw stagger" style="gap:8px">
+  <div class="nd nw" style="font-size:.72rem">429 Rate Limit</div>
+  <div class="nd nw" style="font-size:.72rem">Quota Exhausted</div>
+  <div class="nd nw" style="font-size:.72rem">Insufficient Balance</div>
+  <div class="nd nw" style="font-size:.72rem">500/502/503</div>
+  <div class="nd nw" style="font-size:.72rem">Timeout</div>
+  <div class="nd nw" style="font-size:.72rem">Connection Refused</div>
+</div>
+</div>
+
+<div class="card">
+<h3>各服务降级策略</h3>
+<table>
+<tr><th>服务</th><th>主 Provider</th><th>降级行为</th></tr>
+<tr><td>SuggestionService</td><td>Qwen</td><td>同 Provider 模型降级 → 跨 Provider</td></tr>
+<tr><td>UserPreferenceService</td><td>Qwen</td><td>同 Provider 模型降级 → 跨 Provider → 规则兜底</td></tr>
+<tr><td>Dispatcher (异步任务)</td><td>配置指定</td><td>同 Provider → 跨 Provider → 标记 failed</td></tr>
+<tr><td>NovelSearchService</td><td>config.web_search_model</td><td>降级到 config.ai_model 离线兜底</td></tr>
+</table>
+</div>
+</section>
+
+<\!-- ===== SECTION 12: 工具与 Function Calling ===== -->
+<section id="s12">
+<h2>12 / 工具与 Function Calling</h2>
+<div class="card">
+<h3>工具系统架构</h3>
+<p style="font-size:.8rem;color:var(--td);margin-bottom:12px">基于注册表模式的工具系统，LLM 可通过 Function Calling 调用外部工具</p>
+<table>
+<tr><th>组件</th><th>职责</th><th>说明</th></tr>
+<tr><td><span class="tag tp">Tool</span></td><td>工具定义</td><td>Name、Description、Parameters（JSON Schema）、Execute 函数</td></tr>
+<tr><td><span class="tag ta">ToolRegistry</span></td><td>注册表</td><td>Register / Get / ToAPIFormat</td></tr>
+<tr><td><span class="tag tw">ToolCall</span></td><td>调用请求</td><td>LLM 返回的工具调用（ID、Name、Arguments）</td></tr>
+</table>
+<div style="margin-top:16px">
+<div class="fw stagger" style="gap:12px">
+  <div class="nd np" style="padding:10px 16px">Tool 定义</div>
+  <div class="cline an"></div><div class="ca"></div>
+  <div class="nd na" style="padding:10px 16px">ToolRegistry 注册</div>
+  <div class="cline an"></div><div class="ca"></div>
+  <div class="nd nw" style="padding:10px 16px">LLM 请求 (tools 参数)</div>
+  <div class="cline an"></div><div class="ca"></div>
+  <div class="nd ns" style="padding:10px 16px">Execute 执行</div>
+</div>
+</div>
+</div>
+
+<div class="card">
+<h3>已注册工具</h3>
+<table>
+<tr><th>工具名</th><th>用途</th><th>使用场景</th></tr>
+<tr><td><span class="tag ta">web_search</span></td><td>联网搜索</td><td>AI 管家对话、小说素材搜索</td></tr>
+<tr><td><span class="tag ta">knowledge_query</span></td><td>知识库查询</td><td>章节生成时检索相关知识</td></tr>
+</table>
+</div>
+</section>
+
+<\!-- ===== SECTION 13: 设计系统 ===== -->
+<section id="s13">
+<h2>13 / 设计系统</h2>
+<div class="card">
+<h3>色彩面板 (暗色主题)</h3>
+<div style="display:flex;flex-wrap:wrap;gap:16px;margin-bottom:24px">
+  <div class="fc" style="gap:6px"><div style="width:48px;height:48px;border-radius:8px;border:1px solid var(--bd);background:#0F1117"></div><div style="font-size:.7rem;color:var(--td)">#0F1117</div><div style="font-size:.65rem;color:var(--td)">背景</div></div>
+  <div class="fc" style="gap:6px"><div style="width:48px;height:48px;border-radius:8px;border:1px solid var(--bd);background:#1A1D2E"></div><div style="font-size:.7rem;color:var(--td)">#1A1D2E</div><div style="font-size:.65rem;color:var(--td)">卡片</div></div>
+  <div class="fc" style="gap:6px"><div style="width:48px;height:48px;border-radius:8px;border:1px solid var(--bd);background:#7C8CF8"></div><div style="font-size:.7rem;color:var(--td)">#7C8CF8</div><div style="font-size:.65rem;color:var(--td)">主色</div></div>
+  <div class="fc" style="gap:6px"><div style="width:48px;height:48px;border-radius:8px;border:1px solid var(--bd);background:#E8EAF6"></div><div style="font-size:.7rem;color:var(--td)">#E8EAF6</div><div style="font-size:.65rem;color:var(--td)">文字</div></div>
+  <div class="fc" style="gap:6px"><div style="width:48px;height:48px;border-radius:8px;border:1px solid var(--bd);background:#9CA3C0"></div><div style="font-size:.7rem;color:var(--td)">#9CA3C0</div><div style="font-size:.65rem;color:var(--td)">次文字</div></div>
+  <div class="fc" style="gap:6px"><div style="width:48px;height:48px;border-radius:8px;border:1px solid var(--bd);background:#22C55E"></div><div style="font-size:.7rem;color:var(--td)">#22C55E</div><div style="font-size:.65rem;color:var(--td)">成功</div></div>
+  <div class="fc" style="gap:6px"><div style="width:48px;height:48px;border-radius:8px;border:1px solid var(--bd);background:#EF4444"></div><div style="font-size:.7rem;color:var(--td)">#EF4444</div><div style="font-size:.65rem;color:var(--td)">错误</div></div>
+  <div class="fc" style="gap:6px"><div style="width:48px;height:48px;border-radius:8px;border:1px solid var(--bd);background:#F59E0B"></div><div style="font-size:.7rem;color:var(--td)">#F59E0B</div><div style="font-size:.65rem;color:var(--td)">警告</div></div>
+  <div class="fc" style="gap:6px"><div style="width:48px;height:48px;border-radius:8px;border:1px solid var(--bd);background:#22D3EE"></div><div style="font-size:.7rem;color:var(--td)">#22D3EE</div><div style="font-size:.65rem;color:var(--td)">强调</div></div>
+</div>
+</div>
+
+<div class="card">
+<h3>组件库</h3>
+<table>
+<tr><th>组件</th><th>文件</th><th>用途</th></tr>
+<tr><td><span class="tag tp">GlowCard</span></td><td>components/common/GlowCard.vue</td><td>发光卡片容器</td></tr>
+<tr><td><span class="tag tp">NeonButton</span></td><td>components/common/NeonButton.vue</td><td>霓虹按钮</td></tr>
+<tr><td><span class="tag tp">FadePanel</span></td><td>components/common/FadePanel.vue</td><td>淡入面板</td></tr>
+<tr><td><span class="tag ta">InlineSuggestionEditor</span></td><td>components/editor/InlineSuggestionEditor.vue</td><td>联想编辑器</td></tr>
+<tr><td><span class="tag ta">TaskResult</span></td><td>components/ai/TaskResult.vue</td><td>AI 任务结果展示</td></tr>
+<tr><td><span class="tag ts">AppLayout</span></td><td>components/layout/AppLayout.vue</td><td>全局布局</td></tr>
+<tr><td><span class="tag ts">AppHeader</span></td><td>components/layout/AppHeader.vue</td><td>顶部导航</td></tr>
+<tr><td><span class="tag ts">AppSidebar</span></td><td>components/layout/AppSidebar.vue</td><td>侧边栏</td></tr>
+</table>
+</div>
+
+<div class="card">
+<h3>主题变量 (SCSS)</h3>
+<div style="background:var(--ndb);border-radius:8px;padding:16px;font-size:.72rem;color:var(--td);line-height:2">
+<div>// assets/styles/theme.scss</div>
+<div>--color-bg-base: #12141c;</div>
+<div>--color-bg-surface: #1a1d2e;</div>
+<div>--color-bg-card: #1e2235;</div>
+<div>--color-bg-hover: #262a40;</div>
+<div>--color-bg-editor: #1c1f2b;</div>
+<div>--color-primary: #7C8CF8;</div>
+<div>--color-text-primary: #d4d4c8;</div>
+<div>--color-text-secondary: #9CA3C0;</div>
+<div>--color-text-muted: #5c6380;</div>
+<div>--border-glow: rgba(124,140,248,.12);</div>
+</div>
+</div>
+</section>
+
+</main>
+
+<script>
+// Theme toggle
+function toggleTheme() {
+  const html = document.documentElement;
+  const current = html.getAttribute('data-theme') || 'dark';
+  const next = current === 'dark' ? 'light' : 'dark';
+  html.setAttribute('data-theme', next);
+  localStorage.setItem('arch-theme', next);
+  updateToggleUI(next);
+}
+function updateToggleUI(theme) {
+  const sun = document.querySelector('.icon-sun');
+  const moon = document.querySelector('.icon-moon');
+  const label = document.querySelector('.theme-label');
+  if (theme === 'light') {
+    sun.style.display = 'none';
+    moon.style.display = 'block';
+    label.textContent = '切换暗色';
+  } else {
+    sun.style.display = 'block';
+    moon.style.display = 'none';
+    label.textContent = '切换亮色';
+  }
+}
+// Init theme from localStorage or system preference
+(function() {
+  const saved = localStorage.getItem('arch-theme');
+  const prefer = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+  const theme = saved || prefer;
+  document.documentElement.setAttribute('data-theme', theme);
+  updateToggleUI(theme);
+})();
+
+// Card animations
+const obs = new IntersectionObserver((entries) => {
+  entries.forEach((e, i) => {
+    if (e.isIntersecting) {
+      setTimeout(() => e.target.classList.add('v'), i * 100);
+      obs.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.1 });
+document.querySelectorAll('.card').forEach(c => obs.observe(c));
+
+// Nav highlight
+const navLinks = document.querySelectorAll('nav a');
+const sections = document.querySelectorAll('section');
+const navObs = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      navLinks.forEach(a => a.classList.remove('active'));
+      const link = document.querySelector('nav a[href="#' + e.target.id + '"]');
+      if (link) link.classList.add('active');
+    }
+  });
+}, { threshold: 0.3 });
+sections.forEach(s => navObs.observe(s));
+
+navLinks.forEach(a => {
+  a.addEventListener('click', () => {
+    document.querySelector('nav').classList.remove('open');
+  });
+});
+if (navLinks.length) navLinks[0].classList.add('active');
+</script>
+</body>
+</html>

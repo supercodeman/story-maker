@@ -1,0 +1,7 @@
+# server/.dockerignore
+.git
+.gitignore
+README.md
+*.md
+tmp/
+uploads/

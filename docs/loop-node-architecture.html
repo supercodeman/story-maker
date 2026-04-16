@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LoopNode 循环节点架构演示</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0f0f1a;color:#e2e8f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.6;overflow-x:hidden}
+.container{max-width:1100px;margin:0 auto;padding:20px}
+h1{text-align:center;font-size:2.2rem;margin:40px 0 10px;background:linear-gradient(135deg,#4a9eff,#a855f7);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.subtitle{text-align:center;color:#6b7280;font-size:1rem;margin-bottom:50px}
+section{opacity:0;transform:translateY(40px);transition:opacity 0.8s ease,transform 0.8s ease;margin-bottom:60px}
+section.visible{opacity:1;transform:translateY(0)}
+.section-title{font-size:1.5rem;margin-bottom:24px;padding-bottom:10px;border-bottom:2px solid #1e293b;display:flex;align-items:center;gap:10px}
+.section-title .icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.1rem}
+
+/* Section 1: 对比 */
+.compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+@media(max-width:768px){.compare-grid{grid-template-columns:1fr}}
+.compare-card{border-radius:16px;padding:28px;position:relative;overflow:hidden}
+.compare-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.card-old{background:linear-gradient(135deg,#1a0f0f,#1f1520);border:1px solid #991b1b40}
+.card-old::before{background:linear-gradient(90deg,#ef4444,#991b1b)}
+.card-new{background:linear-gradient(135deg,#0f1a12,#101f15);border:1px solid #16653440}
+.card-new::before{background:linear-gradient(90deg,#22c55e,#166534)}
+.card-label{font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+.card-old .card-label{color:#ef4444}
+.card-new .card-label{color:#22c55e}
+.card-title{font-size:1.25rem;font-weight:700;margin-bottom:16px}
+.node-chain{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:16px 0}
+.chain-node{padding:6px 12px;border-radius:8px;font-size:.8rem;font-family:monospace;opacity:0;transform:scale(0.8);transition:opacity .4s ease,transform .4s ease}
+.chain-node.show{opacity:1;transform:scale(1)}
+.chain-node.old{background:#991b1b40;border:1px solid #ef444460;color:#fca5a5}
+.chain-node.new{background:#16653440;border:1px solid #22c55e60;color:#86efac}
+.chain-arrow{color:#6b7280;font-size:.9rem;opacity:0;transition:opacity .3s}
+.chain-arrow.show{opacity:1}
+.issue-list,.advantage-list{list-style:none;margin-top:14px;font-size:.9rem}
+.issue-list li,.advantage-list li{padding:6px 0;padding-left:20px;position:relative}
+.issue-list li::before{content:'✗';position:absolute;left:0;color:#ef4444;font-weight:700}
+.advantage-list li::before{content:'✓';position:absolute;left:0;color:#22c55e;font-weight:700}
+.loop-box{border:2px dashed #22c55e50;border-radius:12px;padding:16px;margin:12px 0;position:relative}
+.loop-box-label{position:absolute;top:-10px;left:16px;background:#0f1a12;padding:0 8px;font-size:.75rem;color:#22c55e}
+.loop-inner{display:flex;align-items:center;gap:10px;justify-content:center}
+.loop-arrow-back{color:#22c55e;font-size:1.5rem;animation:pulse 2s infinite}
+
+/* Section 2: DAG */
+.dag-container{position:relative;padding:20px 0}
+.dag-layer{display:flex;justify-content:center;align-items:center;gap:20px;margin-bottom:12px;position:relative}
+.dag-node{padding:12px 22px;border-radius:12px;font-size:.9rem;font-weight:600;text-align:center;position:relative;opacity:0;transform:scale(0.7);transition:all .5s ease;cursor:default;min-width:120px}
+.dag-node.show{opacity:1;transform:scale(1)}
+.dag-node.blue{background:linear-gradient(135deg,#2a4a7f,#1e3a5f);border:1px solid #4a9eff60;box-shadow:0 0 20px #4a9eff30}
+.dag-node.purple{background:linear-gradient(135deg,#6b21a8,#4c1d95);border:1px solid #a855f760;box-shadow:0 0 20px #a855f730}
+.dag-node.orange{background:linear-gradient(135deg,#92400e,#78350f);border:1px solid #f59e0b60;box-shadow:0 0 20px #f59e0b30}
+.dag-node.green{background:linear-gradient(135deg,#166534,#14532d);border:1px solid #22c55e60;box-shadow:0 0 20px #22c55e30}
+.dag-node .node-name{font-family:monospace;font-size:.85rem}
+.dag-node .node-label{font-size:.7rem;color:#94a3b8;margin-top:4px}
+.dag-arrows{text-align:center;color:#475569;font-size:1.2rem;margin:4px 0;opacity:0;transition:opacity .5s}
+.dag-arrows.show{opacity:1}
+.dag-arrows .arrow-line{display:inline-block;animation:flowDown 1.5s infinite}
+@keyframes flowDown{0%,100%{opacity:.3}50%{opacity:1}}
+.loop-subgraph{border:2px solid #22c55e40;border-radius:16px;padding:20px;margin-top:8px;position:relative;background:#0a1a0f40}
+.loop-subgraph-title{position:absolute;top:-12px;left:20px;background:#0f0f1a;padding:0 10px;color:#22c55e;font-size:.8rem;font-weight:600}
+.loop-subgraph-inner{display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap}
+.loop-subgraph .condition{padding:8px 16px;border-radius:50%;background:#1a2e1a;border:1px solid #22c55e40;font-size:.8rem;color:#86efac;transform:rotate(45deg)}
+.loop-subgraph .condition span{display:block;transform:rotate(-45deg)}
+.loop-meta{display:flex;gap:16px;justify-content:center;margin-top:12px;font-size:.8rem;color:#6b7280}
+.loop-meta span{background:#1e293b;padding:4px 12px;border-radius:6px}
+.dag-parallel-arrows{display:flex;justify-content:center;gap:80px;color:#475569;font-size:1.2rem;margin:4px 0;opacity:0;transition:opacity .5s}
+.dag-parallel-arrows.show{opacity:1}
+.dag-parallel-arrows span{animation:flowDown 1.5s infinite}
+
+/* Section 3: 时序 */
+.timeline{position:relative;padding-left:40px}
+.timeline::before{content:'';position:absolute;left:18px;top:0;bottom:0;width:2px;background:#1e293b}
+.round-group{margin-bottom:30px}
+.round-title{font-size:1.1rem;font-weight:700;margin-bottom:14px;padding:6px 14px;border-radius:8px;display:inline-block}
+.round-title.r1{background:#2a4a7f40;color:#4a9eff}
+.round-title.r2{background:#16653440;color:#22c55e}
+.timeline-step{position:relative;padding:10px 0 10px 24px;opacity:0;transform:translateX(-20px);transition:all .5s ease}
+.timeline-step.show{opacity:1;transform:translateX(0)}
+.timeline-step::before{content:'';position:absolute;left:-26px;top:14px;width:12px;height:12px;border-radius:50%;background:#1e293b;border:2px solid #475569;transition:all .3s}
+.timeline-step.show::before{background:#4a9eff;border-color:#4a9eff;box-shadow:0 0 10px #4a9eff60}
+.timeline-step.show.pass::before{background:#22c55e;border-color:#22c55e;box-shadow:0 0 10px #22c55e60}
+.timeline-step.show.fail::before{background:#ef4444;border-color:#ef4444;box-shadow:0 0 10px #ef444460}
+.step-text{font-size:.9rem}
+.step-text .tag{font-size:.75rem;padding:2px 8px;border-radius:4px;margin-left:8px}
+.tag.fail-tag{background:#991b1b40;color:#fca5a5}
+.tag.pass-tag{background:#16653440;color:#86efac}
+
+/* Section 4: State 命名 */
+.state-grid{display:grid;gap:12px}
+.state-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;opacity:0;transform:translateY(15px);transition:all .4s ease}
+.state-row.show{opacity:1;transform:translateY(0)}
+@media(max-width:600px){.state-row{grid-template-columns:1fr}}
+.state-key{background:#1e293b;padding:12px 16px;border-radius:10px;font-family:monospace;font-size:.85rem;border-left:3px solid #4a9eff;display:flex;align-items:center}
+.state-val{background:#1a1a2e;padding:12px 16px;border-radius:10px;font-size:.9rem;color:#94a3b8;display:flex;align-items:center}
+.state-row.meta .state-key{border-left-color:#f59e0b}
+.state-row.latest .state-key{border-left-color:#22c55e}
+.state-key .highlight{color:#4a9eff}
+.state-row.latest .state-key .highlight{color:#22c55e}
+.state-row.meta .state-key .highlight{color:#f59e0b}
+
+/* 底部按钮 */
+.replay-wrap{text-align:center;margin:40px 0 60px}
+.replay-btn{background:linear-gradient(135deg,#4a9eff,#a855f7);color:#fff;border:none;padding:14px 36px;border-radius:12px;font-size:1rem;font-weight:600;cursor:pointer;transition:transform .2s,box-shadow .2s}
+.replay-btn:hover{transform:translateY(-2px);box-shadow:0 8px 25px #4a9eff40}
+
+@keyframes pulse{0%,100%{opacity:.5}50%{opacity:1}}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>LoopNode 循环节点架构</h1>
+  <p class="subtitle">DAG 引擎中的循环控制方案设计与演示</p>
+
+  <\!-- Section 1: 重构前 vs 重构后 -->
+  <section id="s1">
+    <div class="section-title">
+      <span class="icon" style="background:#1e293b">📊</span>
+      重构前 vs 重构后对比
+    </div>
+    <div class="compare-grid">
+      <div class="compare-card card-old">
+        <div class="card-label">旧方案</div>
+        <div class="card-title">静态展开</div>
+        <p style="font-size:.85rem;color:#94a3b8;margin-bottom:8px">6 个静态节点硬编码 2 轮循环</p>
+        <div class="node-chain" id="old-chain">
+          <span class="chain-node old">supervisor_review_1</span>
+          <span class="chain-arrow">→</span>
+          <span class="chain-node old">final_revision_1</span>
+          <span class="chain-arrow">→</span>
+          <span class="chain-node old">supervisor_review_2</span>
+          <span class="chain-arrow">→</span>
+          <span class="chain-node old">final_revision_2</span>
+        </div>
+        <ul class="issue-list">
+          <li>轮次固定，无法动态调整</li>
+          <li>字符串匹配脆弱，易出错</li>
+          <li>无耗尽策略，超限后行为未定义</li>
+        </ul>
+      </div>
+      <div class="compare-card card-new">
+        <div class="card-label">新方案</div>
+        <div class="card-title">LoopNode 循环</div>
+        <p style="font-size:.85rem;color:#94a3b8;margin-bottom:8px">1 个 LoopNode 封装循环逻辑</p>
+        <div class="loop-box">
+          <span class="loop-box-label">review_loop</span>
+          <div class="loop-inner" id="new-chain">
+            <span class="chain-node new">review</span>
+            <span class="chain-arrow">→</span>
+            <span class="chain-node new">revision</span>
+            <span class="loop-arrow-back">↺</span>
+          </div>
+        </div>
+        <ul class="advantage-list">
+          <li>轮次可配置（MaxRounds）</li>
+          <li>JSON 结构化解析，类型安全</li>
+          <li>可配置耗尽策略（use_last / error）</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <\!-- Section 2: DAG 流程图 -->
+  <section id="s2">
+    <div class="section-title">
+      <span class="icon" style="background:#1e293b">🔀</span>
+      完整 DAG 流程图 — BuildFullChapterGraph
+    </div>
+    <div class="dag-container">
+      <\!-- Layer 0 -->
+      <div class="dag-layer">
+        <div class="dag-node blue" id="dag-outline">
+          <div class="node-name">outline</div>
+          <div class="node-label">Layer 0 · 大纲生成</div>
+        </div>
+      </div>
+      <div class="dag-arrows" id="arrow-0-1">▼ ▼ ▼</div>
+      <\!-- Layer 1 -->
+      <div class="dag-layer">
+        <div class="dag-node purple" id="dag-char">
+          <div class="node-name">character_desc</div>
+          <div class="node-label">角色描写</div>
+        </div>
+        <div class="dag-node purple" id="dag-scene">
+          <div class="node-name">scene_desc</div>
+          <div class="node-label">场景描写</div>
+        </div>
+        <div class="dag-node purple" id="dag-dialog">
+          <div class="node-name">dialogue</div>
+          <div class="node-label">对话生成</div>
+        </div>
+      </div>
+      <div class="dag-arrows" id="arrow-1-2">▼</div>
+      <\!-- Layer 2 -->
+      <div class="dag-layer">
+        <div class="dag-node orange" id="dag-merge">
+          <div class="node-name">merge_polish</div>
+          <div class="node-label">Layer 2 · 整合润色</div>
+        </div>
+      </div>
+      <div class="dag-arrows" id="arrow-2-3">▼</div>
+      <\!-- Layer 3 -->
+      <div class="dag-layer">
+        <div class="loop-subgraph">
+          <span class="loop-subgraph-title">review_loop（LoopNode）</span>
+          <div class="loop-subgraph-inner">
+            <div class="dag-node green" id="dag-review" style="min-width:100px">
+              <div class="node-name">review</div>
+              <div class="node-label">审核</div>
+            </div>
+            <span style="color:#22c55e;font-size:1.2rem">→</span>
+            <div class="condition"><span>条件</span></div>
+            <span style="color:#22c55e;font-size:1.2rem">→</span>
+            <div class="dag-node green" id="dag-revision" style="min-width:100px">
+              <div class="node-name">revision</div>
+              <div class="node-label">修订</div>
+            </div>
+            <span class="loop-arrow-back" style="font-size:2rem;color:#22c55e">↺</span>
+          </div>
+          <div class="loop-meta">
+            <span>MaxRounds = 3</span>
+            <span>ExitCondition: passed = true</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <\!-- Section 3: 执行时序 -->
+  <section id="s3">
+    <div class="section-title">
+      <span class="icon" style="background:#1e293b">⏱</span>
+      LoopNode 执行时序（动画演示）
+    </div>
+    <div class="timeline">
+      <div class="round-group">
+        <div class="round-title r1">Round 1</div>
+        <div class="timeline-step" data-seq="1"><div class="step-text">构建子 DAG（review → revision）</div></div>
+        <div class="timeline-step" data-seq="2"><div class="step-text">创建隔离 State（round_1 命名空间）</div></div>
+        <div class="timeline-step" data-seq="3"><div class="step-text">执行 review 节点 → 获取审核结果</div></div>
+        <div class="timeline-step fail" data-seq="4"><div class="step-text">审核不通过 <span class="tag fail-tag">passed: false</span></div></div>
+        <div class="timeline-step" data-seq="5"><div class="step-text">执行 revision 节点 → 生成修订稿</div></div>
+        <div class="timeline-step" data-seq="6"><div class="step-text">回写结果至 SharedState（review_loop.round_1.*）</div></div>
+      </div>
+      <div class="round-group">
+        <div class="round-title r2">Round 2</div>
+        <div class="timeline-step" data-seq="7"><div class="step-text">构建子 DAG（review → revision）</div></div>
+        <div class="timeline-step" data-seq="8"><div class="step-text">创建隔离 State（round_2 命名空间）</div></div>
+        <div class="timeline-step" data-seq="9"><div class="step-text">执行 review 节点 → 获取审核结果</div></div>
+        <div class="timeline-step pass" data-seq="10"><div class="step-text">审核通过 <span class="tag pass-tag">passed: true</span></div></div>
+        <div class="timeline-step pass" data-seq="11"><div class="step-text">退出循环，写入 meta 信息</div></div>
+      </div>
+    </div>
+  </section>
+
+  <\!-- Section 4: State 命名规范 -->
+  <section id="s4">
+    <div class="section-title">
+      <span class="icon" style="background:#1e293b">🗂</span>
+      SharedState 命名规范
+    </div>
+    <div class="state-grid">
+      <div class="state-row" data-srow="1">
+        <div class="state-key"><span class="highlight">review_loop</span>.round_1.review_result</div>
+        <div class="state-val">第 1 轮审核结果</div>
+      </div>
+      <div class="state-row" data-srow="2">
+        <div class="state-key"><span class="highlight">review_loop</span>.round_1.final_result</div>
+        <div class="state-val">第 1 轮修订结果</div>
+      </div>
+      <div class="state-row" data-srow="3">
+        <div class="state-key"><span class="highlight">review_loop</span>.round_2.review_result</div>
+        <div class="state-val">第 2 轮审核结果</div>
+      </div>
+      <div class="state-row latest" data-srow="4">
+        <div class="state-key"><span class="highlight">review_loop</span>.latest.review_result</div>
+        <div class="state-val">最新审核结果（指向 round_2）</div>
+      </div>
+      <div class="state-row latest" data-srow="5">
+        <div class="state-key"><span class="highlight">review_loop</span>.latest.final_result</div>
+        <div class="state-val">最新稿件</div>
+      </div>
+      <div class="state-row meta" data-srow="6">
+        <div class="state-key"><span class="highlight">review_loop</span>.meta</div>
+        <div class="state-val">{ total_rounds: 2, exit_reason: "condition_met" }</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="replay-wrap">
+    <button class="replay-btn" onclick="replay()">重新播放动画</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  // 工具函数
+  function delay(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+  // 动画：section 淡入
+  async function showSection(el, delayMs){
+    await delay(delayMs);
+    el.classList.add('visible');
+  }
+
+  // 动画：节点链依次亮起
+  async function animateChain(containerId, baseDelay){
+    await delay(baseDelay);
+    var nodes = document.querySelectorAll('#'+containerId+' .chain-node, #'+containerId+' .chain-arrow');
+    for(var i=0;i<nodes.length;i++){
+      await delay(300);
+      nodes[i].classList.add('show');
+    }
+  }
+
+  // 动画：DAG 节点依次亮起
+  async function animateDAG(baseDelay){
+    await delay(baseDelay);
+    var ids=['dag-outline'];
+    for(var i=0;i<ids.length;i++){
+      var el=document.getElementById(ids[i]);
+      if(el){el.classList.add('show');}
+      await delay(300);
+    }
+    // arrow 0->1
+    var a01=document.getElementById('arrow-0-1');
+    if(a01)a01.classList.add('show');
+    await delay(400);
+    // layer 1 并行
+    var l1=['dag-char','dag-scene','dag-dialog'];
+    for(var i=0;i<l1.length;i++){
+      var el=document.getElementById(l1[i]);
+      if(el)el.classList.add('show');
+    }
+    await delay(500);
+    var a12=document.getElementById('arrow-1-2');
+    if(a12)a12.classList.add('show');
+    await delay(400);
+    // layer 2
+    var el=document.getElementById('dag-merge');
+    if(el)el.classList.add('show');
+    await delay(500);
+    var a23=document.getElementById('arrow-2-3');
+    if(a23)a23.classList.add('show');
+    await delay(400);
+    // layer 3
+    var el2=document.getElementById('dag-review');
+    if(el2)el2.classList.add('show');
+    await delay(300);
+    var el3=document.getElementById('dag-revision');
+    if(el3)el3.classList.add('show');
+  }
+
+  // 动画：时序步骤依次亮起
+  async function animateTimeline(baseDelay){
+    await delay(baseDelay);
+    var steps=document.querySelectorAll('.timeline-step');
+    for(var i=0;i<steps.length;i++){
+      await delay(500);
+      steps[i].classList.add('show');
+    }
+  }
+
+  // 动画：State 行依次亮起
+  async function animateState(baseDelay){
+    await delay(baseDelay);
+    var rows=document.querySelectorAll('.state-row');
+    for(var i=0;i<rows.length;i++){
+      await delay(350);
+      rows[i].classList.add('show');
+    }
+  }
+
+  // 重置所有动画状态
+  function resetAll(){
+    document.querySelectorAll('section').forEach(function(s){s.classList.remove('visible');});
+    document.querySelectorAll('.chain-node,.chain-arrow').forEach(function(n){n.classList.remove('show');});
+    document.querySelectorAll('.dag-node').forEach(function(n){n.classList.remove('show');});
+    document.querySelectorAll('.dag-arrows,.dag-parallel-arrows').forEach(function(n){n.classList.remove('show');});
+    document.querySelectorAll('.timeline-step').forEach(function(n){n.classList.remove('show');});
+    document.querySelectorAll('.state-row').forEach(function(n){n.classList.remove('show');});
+  }
+
+  // 主动画流程
+  async function runAll(){
+    resetAll();
+    // Section 1
+    await showSection(document.getElementById('s1'), 300);
+    animateChain('old-chain', 600);
+    animateChain('new-chain', 600);
+    // Section 2
+    await showSection(document.getElementById('s2'), 1500);
+    animateDAG(400);
+    // Section 3
+    await showSection(document.getElementById('s3'), 4500);
+    animateTimeline(400);
+    // Section 4
+    await showSection(document.getElementById('s4'), 6500);
+    animateState(400);
+  }
+
+  // 暴露 replay
+  window.replay = function(){
+    runAll();
+  };
+
+  // 页面加载后自动开始
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded', runAll);
+  } else {
+    runAll();
+  }
+})();
+</script>
+</body>
+</html>

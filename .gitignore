@@ -1,0 +1,49 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Go
+server/bin/
+server/tmp/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+vendor/
+server/vendor_local/
+
+# Node / Frontend
+web/node_modules/
+web/dist/
+web/dist-ssr/
+package-lock.json
+
+# Env & Config
+.env
+.env.*
+*.local
+server/config/config.local.yaml
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Uploads
+server/uploads/
+uploads/
+
+# Docker
+docker-compose.override.yml

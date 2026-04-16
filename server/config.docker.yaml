@@ -1,0 +1,32 @@
+# server/config.docker.yaml
+# Docker Compose 环境专用配置，容器内使用服务名访问 MySQL/Redis
+server:
+  port: 8080
+  mode: release
+
+database:
+  dsn: "root:password@tcp(mysql:3306)/ai_curton?charset=utf8mb4&parseTime=True&loc=Local"
+  max_idle_conns: 10
+  max_open_conns: 100
+  conn_max_lifetime: 3600
+
+redis:
+  addr: "redis:6379"
+  password: ""
+  db: 0
+
+jwt:
+  secret: "change-me-to-a-random-string"
+  access_token_ttl: 7200
+  refresh_token_ttl: 604800
+
+encrypt:
+  key: "change-me-32-byte-aes256-key!!"
+
+upload:
+  path: "/app/uploads"
+  max_size: 20971520
+
+kimi:
+  api_key: ""
+  base_url: "https://api.moonshot.cn/v1"
