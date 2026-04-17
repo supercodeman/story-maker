@@ -12,13 +12,13 @@ export function useSuggestion(editor: Ref<Editor | null>, novelId: Ref<number>) 
 
   let abortController: AbortController | null = null
   let debounceTimer: ReturnType<typeof setTimeout> | null = null
-  let lastRequestTime = 0
   let hasInputSinceLastFocus = false // 追踪光标聚焦后是否有实际输入
-  const MIN_INTERVAL = 3000 // 全局节流：至少 3 秒间隔
+  let isTyping = false // 追踪是否有真实键盘输入（区分撤销/格式操作）
 
-  // 标记用户有实际输入（由 onUpdate 调用）
+  // 标记用户有实际键盘输入（由编辑器 keydown 事件调用）
   function markInput() {
     hasInputSinceLastFocus = true
+    isTyping = true
   }
 
   // 光标/选区变化时重置输入标记
@@ -29,7 +29,9 @@ export function useSuggestion(editor: Ref<Editor | null>, novelId: Ref<number>) 
   // 停顿触发：用户停止输入 800ms 后自动请求联想
   function onUpdate() {
     if (!enabled.value || !editor.value) return
-    markInput()
+    // 只有真实键盘输入才触发联想，撤销/格式操作不触发
+    if (!isTyping) return
+    isTyping = false
     clearPending()
     debounceTimer = setTimeout(() => {
       if (shouldTrigger()) {
@@ -63,9 +65,6 @@ export function useSuggestion(editor: Ref<Editor | null>, novelId: Ref<number>) 
     // 当前行至少 10 个字符
     if (paraText.length < 10) return false
 
-    // 全局节流
-    if (Date.now() - lastRequestTime < MIN_INTERVAL) return false
-
     return true
   }
 
@@ -85,7 +84,6 @@ export function useSuggestion(editor: Ref<Editor | null>, novelId: Ref<number>) 
     if (!precedingText.trim()) return
 
     loading.value = true
-    lastRequestTime = Date.now()
     abortController = new AbortController()
 
     try {
@@ -201,6 +199,7 @@ export function useSuggestion(editor: Ref<Editor | null>, novelId: Ref<number>) 
     enabled,
     onUpdate,
     onManualTrigger,
+    markInput,
     acceptSuggestion,
     rejectSuggestion,
     clearSuggestion,

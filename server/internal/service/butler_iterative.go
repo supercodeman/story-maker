@@ -24,6 +24,12 @@ const (
 	iterPollInterval   = 2 * time.Second
 )
 
+// ConversationMessage 对话历史消息（用于步骤对话式调整）
+type ConversationMessage struct {
+	Role    string `json:"role"`    // "assistant" | "user"
+	Content string `json:"content"` // 消息内容
+}
+
 // ButlerIterativeService 管家多轮迭代服务
 type ButlerIterativeService struct {
 	aiTaskDAO     *dao.AITaskDAO
@@ -44,16 +50,24 @@ type ButlerIterateRequest struct {
 	UserPrompt      string `json:"user_prompt"`
 	ModelName       string `json:"model_name"`
 	ButlerSessionID string `json:"butler_session_id"`
+	EnableBeats     bool   `json:"enable_beats"`    // 启用段落细化（中长篇）
+	EnableSubplots  bool   `json:"enable_subplots"` // 启用支线交织
+	ChapterNum      int    `json:"chapter_num"`     // 预计章节数（用于判断是否中长篇）
+	ConversationHistory []ConversationMessage `json:"conversation_history,omitempty"` // 对话历史（对话模式调整用）
 }
 
 // ButlerIterateStatus 迭代状态
 type ButlerIterateStatus struct {
-	Phase       string `json:"phase"`        // "generating" | "reviewing" | "completed" | "failed"
-	Round       int    `json:"round"`        // 当前轮次（0=草稿生成中）
-	MaxRounds   int    `json:"max_rounds"`   // 最大轮次
-	FinalResult string `json:"final_result"` // 最终结果（completed 时有值）
-	TaskIDs     []uint `json:"task_ids"`     // 所有关联 task ID
-	Error       string `json:"error,omitempty"`
+	Phase            string `json:"phase"`                     // "generating" | "reviewing" | "completed" | "failed"
+	Round            int    `json:"round"`                     // 当前轮次（0=草稿生成中）
+	MaxRounds        int    `json:"max_rounds"`                // 最大轮次
+	FinalResult      string `json:"final_result"`              // 最终结果（completed 时有值）
+	StructuredData   string `json:"structured_data,omitempty"` // 提取的结构化 JSON（如 STORY_STRUCTURE）
+	TaskIDs          []uint `json:"task_ids"`                  // 所有关联 task ID
+	Error            string `json:"error,omitempty"`
+	PromptTokens     int    `json:"prompt_tokens"`             // 累计输入 token
+	CompletionTokens int    `json:"completion_tokens"`         // 累计输出 token
+	TotalTokens      int    `json:"total_tokens"`              // 累计总 token
 }
 
 // NewButlerIterativeService 创建实例
@@ -74,8 +88,8 @@ func (s *ButlerIterativeService) SetModelRegistry(mr *ModelRegistryService) {
 // StartIteration 启动多轮迭代（异步 goroutine）
 func (s *ButlerIterativeService) StartIteration(ctx context.Context, userID uint, req *ButlerIterateRequest) (string, error) {
 	// 校验 action
-	if req.Action != "storyline" && req.Action != "characters" {
-		return "", fmt.Errorf("invalid action: %s, must be 'storyline' or 'characters'", req.Action)
+	if req.Action != "storyline" && req.Action != "characters" && req.Action != "opening_polish" {
+		return "", fmt.Errorf("invalid action: %s, must be 'storyline', 'characters' or 'opening_polish'", req.Action)
 	}
 
 	iterationID := generateIterationID()
@@ -171,6 +185,26 @@ func (s *ButlerIterativeService) runIteration(ctx context.Context, userID uint, 
 	if st, ok := s.iterations[iterationID]; ok {
 		st.Phase = "completed"
 		st.FinalResult = current
+		// 汇总所有关联任务的 token 消耗
+		for _, tid := range st.TaskIDs {
+			if task, err := s.aiTaskDAO.GetTask(ctx, tid); err == nil {
+				st.PromptTokens += task.PromptTokens
+				st.CompletionTokens += task.CompletionTokens
+				st.TotalTokens += task.TotalTokens
+			}
+		}
+		// 故事线完成时提取结构化 JSON，供后续步骤使用
+		if req.Action == "storyline" {
+			if structJSON := extractTagContent(current, "---STORY_STRUCTURE---", "---END_STRUCTURE---"); structJSON != "" {
+				st.StructuredData = structJSON
+			}
+		}
+		// 开篇打磨完成时提取精细化章节 JSON
+		if req.Action == "opening_polish" {
+			if openingJSON := extractTagContent(current, "---OPENING_CHAPTERS---", "---END_OPENING---"); openingJSON != "" {
+				st.StructuredData = openingJSON
+			}
+		}
 	}
 	s.mu.Unlock()
 
@@ -192,11 +226,14 @@ func (s *ButlerIterativeService) executeDraft(ctx context.Context, userID uint, 
 
 	switch req.Action {
 	case "storyline":
-		systemPrompt, userContent = buildStorylineDraftPrompt(req.Setting, req.PrevStepResult, req.UserPrompt)
+		systemPrompt, userContent = buildStorylineDraftPrompt(req.Setting, req.PrevStepResult, req.UserPrompt, req.EnableBeats, req.EnableSubplots, req.ChapterNum, req.ConversationHistory)
 		taskType = model.TaskTypeButlerStorylineDraft
 	case "characters":
-		systemPrompt, userContent = buildCharactersDraftPrompt(req.Setting, req.PrevStepResult, req.UserPrompt)
+		systemPrompt, userContent = buildCharactersDraftPrompt(req.Setting, req.PrevStepResult, req.UserPrompt, req.ConversationHistory)
 		taskType = model.TaskTypeButlerCharactersDraft
+	case "opening_polish":
+		systemPrompt, userContent = buildOpeningSummaryPolishPrompt(req.PrevStepResult, req.Setting, req.UserPrompt)
+		taskType = model.TaskTypeButlerOpeningDraft
 	}
 
 	return s.executeAITask(ctx, userID, req.PortfolioID, req.ButlerSessionID, taskType, modelName, systemPrompt, userContent)
@@ -214,6 +251,9 @@ func (s *ButlerIterativeService) executeReview(ctx context.Context, userID uint,
 	case "characters":
 		systemPrompt, userContent = buildCharactersReviewPrompt(content)
 		taskType = model.TaskTypeButlerCharactersReview
+	case "opening_polish":
+		systemPrompt, userContent = buildOpeningSummaryReviewPrompt(content)
+		taskType = model.TaskTypeButlerOpeningReview
 	}
 
 	resultText, taskID, err := s.executeAITask(ctx, userID, req.PortfolioID, req.ButlerSessionID, taskType, modelName, systemPrompt, userContent)

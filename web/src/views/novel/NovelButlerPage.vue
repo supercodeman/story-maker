@@ -1,5 +1,5 @@
 <!-- web/src/views/novel/NovelButlerPage.vue -->
-<!-- 小说管家：列表页 + 5 步 AI 创作向导 -->
+<!-- 小说管家：列表页 + 7 步 AI 创作向导 -->
 <template>
   <div class="novel-butler-page">
     <!-- 顶部导航 -->
@@ -87,7 +87,9 @@
             'step-node--done': idx < currentStepIndex,
             'step-node--active': idx === currentStepIndex && started,
             'step-node--pending': idx > currentStepIndex || !started,
+            'step-node--clickable': idx < currentStepIndex,
           }"
+          @click="idx < currentStepIndex && handleJumpToStep(step)"
         >
           <div class="step-node__dot">
             <svg v-if="idx < currentStepIndex" viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
@@ -183,6 +185,31 @@
           <div v-else-if="currentStepState.status === 'confirmed'" class="confirmed-summary">
             <div class="confirmed-badge">✓ 已确认</div>
             <div class="confirmed-text">{{ currentStepState.result.slice(0, 200) }}{{ currentStepState.result.length > 200 ? '...' : '' }}</div>
+            <div v-if="currentStepState.tokenUsage" class="token-usage">
+              输入 {{ currentStepState.tokenUsage.prompt_tokens.toLocaleString() }} · 输出 {{ currentStepState.tokenUsage.completion_tokens.toLocaleString() }} · 合计 {{ currentStepState.tokenUsage.total_tokens.toLocaleString() }} tokens
+            </div>
+            <!-- 对话区域（非 autoMode 时显示） -->
+            <div v-if="!state.autoMode && currentStepState.messages.length > 0" class="step-chat">
+              <div class="step-chat__history">
+                <div v-for="(msg, i) in currentStepState.messages" :key="i"
+                     class="step-chat__bubble" :class="`step-chat__bubble--${msg.role}`">
+                  {{ msg.content }}
+                </div>
+              </div>
+              <div class="step-chat__input">
+                <el-input v-model="currentStepState.refineInput" type="textarea" :rows="2"
+                          placeholder="输入调整要求，如：换个更悬疑的方向..." />
+                <button class="action-btn action-btn--primary" @click="refineStep('topic')"
+                        :disabled="!currentStepState.refineInput?.trim() || currentStepState.status === 'generating'">
+                  调整
+                </button>
+              </div>
+            </div>
+            <div v-if="!state.autoMode" class="step-chat__confirm">
+              <button class="action-btn action-btn--primary" @click="confirmStepAndNext('topic')">
+                确认，继续下一步
+              </button>
+            </div>
           </div>
 
           <!-- error -->
@@ -215,6 +242,11 @@
               maxlength="1000"
               show-word-limit
             />
+            <!-- 故事线步骤：可选开关 -->
+            <div v-if="state.currentStep === 'storyline'" class="step-hint-box__options">
+              <el-checkbox v-model="state.enableBeats">段落细化（中长篇推荐，>30章时生效）</el-checkbox>
+              <el-checkbox v-model="state.enableSubplots">支线交织（增加1-2条支线）</el-checkbox>
+            </div>
             <button class="action-btn action-btn--primary" style="margin-top: 14px;" @click="submitStepHint(state.currentStep)">
               开始生成
             </button>
@@ -244,12 +276,109 @@
 
           <!-- confirmed：最终结果展示 + 编辑 -->
           <div v-else-if="currentStepState.status === 'confirmed'" class="iteration-result">
+            <!-- 故事线：四幕卡片展示 -->
+            <div v-if="state.currentStep === 'storyline' && storyStructure" class="story-acts">
+              <div class="story-acts__synopsis">{{ storyStructure.synopsis }}</div>
+              <div class="story-acts__grid">
+                <div v-for="(act, idx) in storyStructure.acts" :key="idx" class="act-card">
+                  <div class="act-card__header">
+                    <span class="act-card__name">第{{ ['一', '二', '三', '四'][idx] }}幕·{{ act.name }}</span>
+                    <span class="act-card__ratio">{{ act.ratio }}%</span>
+                  </div>
+                  <div class="act-card__mission">{{ act.core_mission }}</div>
+                  <div class="act-card__events">
+                    <div v-for="(evt, ei) in act.key_events" :key="ei" class="act-card__event">{{ ei + 1 }}. {{ evt }}</div>
+                  </div>
+                  <div class="act-card__footer">
+                    <div class="act-card__turning"><span class="act-card__label">转折点</span>{{ act.turning_point }}</div>
+                    <div class="act-card__hook"><span class="act-card__label">钩子</span>{{ act.hook }}</div>
+                  </div>
+                  <!-- 段落细化 -->
+                  <div v-if="act.beats && act.beats.length > 0" class="act-card__beats">
+                    <div class="act-card__beats-title">段落细化</div>
+                    <div v-for="(beat, bi) in act.beats" :key="bi" class="beat-item">
+                      <span class="beat-item__name">{{ beat.name }}</span>
+                      <span class="beat-item__info">{{ beat.goal }} · 约{{ beat.chapter_count }}章</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- 支线展示 -->
+              <div v-if="storyStructure.subplots && storyStructure.subplots.length > 0" class="story-subplots">
+                <div class="story-subplots__title">支线交织</div>
+                <div v-for="(sp, si) in storyStructure.subplots" :key="si" class="subplot-item">
+                  <span class="subplot-item__name">{{ sp.name }}</span>
+                  <span class="subplot-item__desc">{{ sp.description }}</span>
+                  <span class="subplot-item__acts">交汇幕：{{ sp.intersect_acts?.join(', ') }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 人物设计：人物卡片网格 -->
+            <div v-if="state.currentStep === 'characters' && characterCards.length > 0" class="character-cards">
+              <div class="character-cards__title">人物群像（{{ characterCards.length }} 人）</div>
+              <div class="character-cards__grid">
+                <div v-for="(ch, ci) in characterCards" :key="ci" class="char-card" :class="`char-card--${ch.role_type === '主角' ? 'lead' : ch.role_type === '核心配角' ? 'core' : 'support'}`">
+                  <div class="char-card__header">
+                    <span class="char-card__name">{{ ch.name }}</span>
+                    <el-tag :type="ch.role_type === '主角' ? 'danger' : ch.role_type === '核心配角' ? 'warning' : 'info'" size="small">{{ ch.role_type }}</el-tag>
+                  </div>
+                  <div class="char-card__identity">{{ ch.identity }}</div>
+                  <div class="char-card__row"><span class="char-card__label">外在</span>{{ ch.appearance }}</div>
+                  <div class="char-card__row"><span class="char-card__label">表层</span>{{ ch.personality_surface }}</div>
+                  <div class="char-card__row"><span class="char-card__label">内核</span>{{ ch.personality_deep }}</div>
+                  <div class="char-card__row"><span class="char-card__label">语言</span>{{ ch.speech_style }}</div>
+                  <div class="char-card__row"><span class="char-card__label">动机</span>{{ ch.motivation }}</div>
+                  <div class="char-card__row"><span class="char-card__label">弧光</span>{{ ch.arc }}</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 原始文本：折叠展示 -->
+            <details v-if="state.currentStep === 'characters'" class="raw-text-details">
+              <summary>查看/编辑原始文本</summary>
+              <el-input
+                v-model="currentStepState.result"
+                type="textarea"
+                :autosize="{ minRows: 10, maxRows: 30 }"
+                placeholder="AI 生成的内容，你可以直接编辑修改"
+              />
+            </details>
             <el-input
+              v-if="state.currentStep !== 'characters'"
               v-model="currentStepState.result"
               type="textarea"
               :autosize="{ minRows: 10, maxRows: 30 }"
               placeholder="AI 生成的内容，你可以直接编辑修改"
             />
+
+            <!-- 人物设计：出场规划表格 -->
+            <div v-if="state.currentStep === 'characters' && appearancePlan.length > 0" class="appearance-plan">
+              <div class="appearance-plan__title">出场规划</div>
+              <el-table :data="appearancePlan" border size="small" style="margin-top: 8px;">
+                <el-table-column prop="character" label="人物" width="100" />
+                <el-table-column label="首次出场" width="160">
+                  <template #default="{ row }">
+                    第{{ row.first_appear?.act }}幕 · {{ row.first_appear?.method }}
+                  </template>
+                </el-table-column>
+                <el-table-column label="各幕角色" min-width="200">
+                  <template #default="{ row }">
+                    <span v-for="(role, key) in row.act_roles" :key="key" class="act-role-tag">
+                      {{ key }}: {{ role }}
+                    </span>
+                  </template>
+                </el-table-column>
+                <el-table-column label="关键场景" min-width="200">
+                  <template #default="{ row }">
+                    <div v-for="(sc, si) in row.key_scenes" :key="si" class="key-scene-item">
+                      第{{ sc.act }}幕: {{ sc.scene }}
+                    </div>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </div>
+
             <!-- 人物设计：关系矩阵表格 -->
             <div v-if="state.currentStep === 'characters' && relationMatrix.length > 0" class="relation-matrix">
               <div class="relation-matrix__title">人物关系矩阵</div>
@@ -266,6 +395,26 @@
                   </template>
                 </el-table-column>
               </el-table>
+            </div>
+            <div v-if="currentStepState.tokenUsage" class="token-usage">
+              输入 {{ currentStepState.tokenUsage.prompt_tokens.toLocaleString() }} · 输出 {{ currentStepState.tokenUsage.completion_tokens.toLocaleString() }} · 合计 {{ currentStepState.tokenUsage.total_tokens.toLocaleString() }} tokens
+            </div>
+            <!-- 对话区域（非 autoMode 时显示） -->
+            <div v-if="!state.autoMode && currentStepState.messages.length > 0" class="step-chat">
+              <div class="step-chat__history">
+                <div v-for="(msg, i) in currentStepState.messages" :key="i"
+                     class="step-chat__bubble" :class="`step-chat__bubble--${msg.role}`">
+                  {{ msg.content }}
+                </div>
+              </div>
+              <div class="step-chat__input">
+                <el-input v-model="currentStepState.refineInput" type="textarea" :rows="2"
+                          placeholder="输入调整要求，如：第二幕节奏加快..." />
+                <button class="action-btn action-btn--primary" @click="refineStep(state.currentStep)"
+                        :disabled="!currentStepState.refineInput?.trim() || currentStepState.status === 'generating'">
+                  调整
+                </button>
+              </div>
             </div>
             <div class="iteration-result__actions">
               <button class="action-btn action-btn--ghost" @click="rerunIterativeStep">
@@ -311,12 +460,12 @@
               <label class="step-hint-box__label">章节数量</label>
               <el-input-number
                 v-model="state.chapterNum"
-                :min="5"
+                :min="20"
                 :max="100"
                 :step="5"
                 size="default"
               />
-              <span class="step-hint-box__tip">默认 30 章</span>
+              <span class="step-hint-box__tip">默认 56 章（推荐 50-62 章）</span>
             </div>
             <button class="action-btn action-btn--primary" style="margin-top: 16px;" @click="submitStepHint('chapters')">
               开始生成
@@ -330,6 +479,9 @@
           <div v-else-if="state.steps.chapters.status === 'choosing'" class="chapter-preview">
             <div class="chapter-preview__header">
               <span class="chapter-preview__count">共 {{ state.outlineChapters.length }} 章</span>
+              <span v-if="state.steps.chapters.tokenUsage" class="token-usage token-usage--inline">
+                {{ state.steps.chapters.tokenUsage.total_tokens.toLocaleString() }} tokens
+              </span>
               <button class="action-btn action-btn--primary" @click="confirmChapters">
                 确认大纲，创建小说
               </button>
@@ -354,6 +506,9 @@
           <div v-else-if="state.steps.chapters.status === 'confirmed'" class="confirmed-summary">
             <div class="confirmed-badge">✓ 已确认</div>
             <div class="confirmed-text">{{ state.steps.chapters.result }}</div>
+            <div v-if="state.steps.chapters.tokenUsage" class="token-usage">
+              输入 {{ state.steps.chapters.tokenUsage.prompt_tokens.toLocaleString() }} · 输出 {{ state.steps.chapters.tokenUsage.completion_tokens.toLocaleString() }} · 合计 {{ state.steps.chapters.tokenUsage.total_tokens.toLocaleString() }} tokens
+            </div>
           </div>
 
           <div v-if="state.steps.chapters.error" class="step-error">
@@ -365,11 +520,79 @@
         </div>
       </template>
 
-      <!-- 步骤 5：知识图谱 -->
-      <template v-else-if="state.currentStep === 'knowledge'">
+      <!-- 步骤 5：开篇打磨 -->
+      <template v-else-if="state.currentStep === 'opening_polish'">
         <div class="step-section">
           <div class="step-header">
             <div class="step-header__badge">5</div>
+            <div class="step-header__title">开篇打磨</div>
+            <div class="step-header__status" :class="`step-header__status--${state.steps.opening_polish.status}`">{{ stepStatusText }}</div>
+          </div>
+
+          <!-- generating：两阶段进度 -->
+          <div v-if="state.steps.opening_polish.status === 'generating'" class="iteration-progress">
+            <div class="iteration-progress__icon">
+              <el-icon class="is-loading" :size="32"><Loading /></el-icon>
+            </div>
+            <p class="iteration-progress__title">
+              {{ state.openingProgress.phase === 'polishing' ? '阶段1：前5章概要精细化' : '阶段2：前5章内容生成' }}
+            </p>
+            <p class="iteration-progress__detail">
+              <template v-if="state.openingProgress.phase === 'polishing'">
+                AI 正在精细化前5章概要...
+                <template v-if="state.steps.opening_polish.iterationRound && state.steps.opening_polish.iterationRound > 0">
+                  · 第 {{ state.steps.opening_polish.iterationRound }} / {{ state.steps.opening_polish.iterationMaxRounds || 5 }} 轮
+                </template>
+              </template>
+              <template v-else>
+                正在生成第 {{ state.openingProgress.current }} / {{ state.openingProgress.total }} 章
+              </template>
+            </p>
+            <el-progress
+              :percentage="state.openingProgress.phase === 'polishing'
+                ? (state.steps.opening_polish.iterationRound || 0) * 10
+                : Math.round(state.openingProgress.current / state.openingProgress.total * 100)"
+              :stroke-width="6"
+              :show-text="false"
+              style="margin-top: 16px; max-width: 400px;"
+            />
+          </div>
+
+          <!-- confirmed -->
+          <div v-else-if="state.steps.opening_polish.status === 'confirmed'" class="confirmed-summary">
+            <div class="confirmed-badge">✓ 已完成</div>
+            <div class="confirmed-text">{{ state.steps.opening_polish.result }}</div>
+            <div v-if="state.steps.opening_polish.tokenUsage" class="token-usage">
+              输入 {{ state.steps.opening_polish.tokenUsage.prompt_tokens.toLocaleString() }} · 输出 {{ state.steps.opening_polish.tokenUsage.completion_tokens.toLocaleString() }} · 合计 {{ state.steps.opening_polish.tokenUsage.total_tokens.toLocaleString() }} tokens
+            </div>
+            <!-- 展示精细化概要卡片 -->
+            <div v-if="state.openingChapters && state.openingChapters.length > 0" class="opening-chapters-preview">
+              <div v-for="(ch, idx) in state.openingChapters" :key="idx" class="opening-chapter-card">
+                <div class="opening-chapter-card__num">{{ ch.chapter_index || idx + 1 }}</div>
+                <div class="opening-chapter-card__body">
+                  <div class="opening-chapter-card__title">{{ ch.title }}</div>
+                  <div v-if="ch.emotion_curve" class="opening-chapter-card__curve">节奏：{{ ch.emotion_curve }}</div>
+                  <div v-if="ch.chapter_hook" class="opening-chapter-card__hook">钩子：{{ ch.chapter_hook }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- error -->
+          <div v-if="state.steps.opening_polish.error" class="step-error">
+            <el-alert :title="state.steps.opening_polish.error" type="error" show-icon :closable="false" />
+            <button class="action-btn action-btn--primary" style="margin-top: 10px;" @click="retryCurrentStep">
+              重试
+            </button>
+          </div>
+        </div>
+      </template>
+
+      <!-- 步骤 6：知识图谱 -->
+      <template v-else-if="state.currentStep === 'knowledge'">
+        <div class="step-section">
+          <div class="step-header">
+            <div class="step-header__badge">6</div>
             <div class="step-header__title">知识图谱</div>
           </div>
 
@@ -388,11 +611,11 @@
         </div>
       </template>
 
-      <!-- 步骤 6：内容填充 -->
+      <!-- 步骤 7：内容填充 -->
       <template v-else-if="state.currentStep === 'content'">
         <div class="step-section">
           <div class="step-header">
-            <div class="step-header__badge">6</div>
+            <div class="step-header__badge">7</div>
             <div class="step-header__title">内容填充</div>
           </div>
 
@@ -456,7 +679,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Loading } from '@element-plus/icons-vue'
 import { useNovelButler } from '@/composables/useNovelButler'
 import { novelApi, type Novel } from '@/api/novel'
@@ -489,6 +712,8 @@ const {
   closeButler,
   submitStepHint,
   confirmStep,
+  confirmStepAndNext,
+  refineStep,
   runIterativeStep,
   confirmChapters,
   skipContent,
@@ -625,6 +850,17 @@ function handleBackToNovels() {
   router.push(`/workspace/${props.id}/portfolio/${props.pid}/novels`)
 }
 
+// 跳回已完成步骤
+function handleJumpToStep(step: string) {
+  ElMessageBox.confirm(
+    '重新生成此步骤将清除后续所有步骤的结果，确认？',
+    '跳回重新生成',
+    { confirmButtonText: '确认', cancelButtonText: '取消', type: 'warning' }
+  ).then(() => {
+    jumpToStep(step)
+  }).catch(() => {})
+}
+
 // 迭代进度文本
 const iterationPhaseText = computed(() => {
   const phase = currentStepState.value.iterationPhase
@@ -661,13 +897,107 @@ const relationMatrix = computed(() => {
   }
 })
 
-// 重新生成（步骤2/3）
+// 解析故事线四幕结构
+const storyStructure = computed(() => {
+  if (state.currentStep !== 'storyline') return null
+  const text = currentStepState.value.result || ''
+  const startTag = '---STORY_STRUCTURE---'
+  const endTag = '---END_STRUCTURE---'
+  const startIdx = text.indexOf(startTag)
+  const endIdx = text.indexOf(endTag)
+  if (startIdx < 0 || endIdx < 0) return null
+  const jsonStr = text.slice(startIdx + startTag.length, endIdx).trim()
+  try {
+    return JSON.parse(jsonStr) as {
+      synopsis: string
+      acts: { name: string; ratio: number; core_mission: string; key_events: string[]; turning_point: string; hook: string; beats: { name: string; goal: string; climax: string; hook: string; chapter_count: number }[] }[]
+      subplots?: { name: string; description: string; intersect_acts: number[] }[]
+    }
+  } catch {
+    return null
+  }
+})
+
+// 解析人物出场规划
+const appearancePlan = computed(() => {
+  if (state.currentStep !== 'characters') return []
+  const text = currentStepState.value.result || ''
+  const startTag = '---APPEARANCE_PLAN---'
+  const endTag = '---END_APPEARANCE---'
+  const startIdx = text.indexOf(startTag)
+  const endIdx = text.indexOf(endTag)
+  if (startIdx < 0 || endIdx < 0) return []
+  const jsonStr = text.slice(startIdx + startTag.length, endIdx).trim()
+  try {
+    return JSON.parse(jsonStr) as {
+      character: string
+      first_appear: { act: number; beat: string; method: string }
+      act_roles: Record<string, string>
+      key_scenes: { act: number; scene: string }[]
+    }[]
+  } catch {
+    return []
+  }
+})
+
+// 解析人物卡片
+const characterCards = computed(() => {
+  if (state.currentStep !== 'characters') return []
+  const text = currentStepState.value.result || ''
+  const startTag = '---CHARACTER_CARDS---'
+  const endTag = '---END_CARDS---'
+  const startIdx = text.indexOf(startTag)
+  const endIdx = text.indexOf(endTag)
+  if (startIdx < 0 || endIdx < 0) return []
+  const jsonStr = text.slice(startIdx + startTag.length, endIdx).trim()
+  try {
+    return JSON.parse(jsonStr) as {
+      name: string
+      identity: string
+      role_type: string
+      appearance: string
+      personality_surface: string
+      personality_deep: string
+      speech_style: string
+      motivation: string
+      arc: string
+    }[]
+  } catch {
+    return []
+  }
+})
+
+// 跳回已完成步骤重新生成
+function jumpToStep(targetStep: string) {
+  const targetIdx = STEPS.indexOf(targetStep as any)
+  if (targetIdx < 0) return
+  // 重置目标步骤及其后续所有步骤
+  for (let i = targetIdx; i < STEPS.length; i++) {
+    const s = state.steps[STEPS[i]]
+    s.status = 'idle'
+    s.options = []
+    s.selectedIndex = -1
+    s.result = ''
+    s.error = null
+    s.messages = []
+    s.refineInput = ''
+  }
+  state.currentStep = targetStep as any
+  // 清除相关中间数据
+  if (targetIdx <= STEPS.indexOf('chapters' as any)) {
+    state.outlineChapters = []
+  }
+}
+
+// 重新生成（步骤2/3）— 从头重新生成，清空对话历史
 function rerunIterativeStep() {
   const step = state.currentStep as 'storyline' | 'characters'
   const stepState = state.steps[step]
   stepState.status = 'idle'
   stepState.result = ''
   stepState.error = null
+  stepState.messages = []
+  stepState.refineInput = ''
 }
 
 // 确认迭代结果并推进下一步
@@ -786,6 +1116,14 @@ function goToNovel() {
   white-space: nowrap;
 }
 .step-node--done .step-node__label { color: var(--color-accent-green); }
+.step-node--clickable { cursor: pointer; }
+.step-node--clickable:hover .step-node__dot {
+  transform: scale(1.15);
+  box-shadow: 0 0 20px rgba(110, 231, 183, 0.55);
+}
+.step-node--clickable:hover .step-node__label {
+  text-decoration: underline;
+}
 .step-node--active .step-node__label { color: var(--color-primary-light); }
 .step-node--pending .step-node__label { color: var(--color-text-muted); }
 .step-node__line {
@@ -1090,6 +1428,19 @@ function goToNovel() {
   color: var(--color-text-secondary);
 }
 
+/* Token 消耗统计 */
+.token-usage {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  padding: 4px 0;
+}
+.token-usage--inline {
+  margin: 0 12px 0 0;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
 /* --- 错误提示 --- */
 .step-error {
   margin-top: 16px;
@@ -1182,6 +1533,51 @@ function goToNovel() {
   background: var(--color-bg-surface);
   border: 1px solid var(--border-glow);
   border-radius: 14px;
+}
+
+/* --- 开篇打磨章节卡片 --- */
+.opening-chapters-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 16px;
+}
+.opening-chapter-card {
+  display: flex;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--color-bg-surface);
+  border: 1px solid var(--border-glow);
+  border-radius: 10px;
+}
+.opening-chapter-card__num {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--color-primary-light), var(--color-accent-cyan));
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+}
+.opening-chapter-card__body {
+  flex: 1;
+  min-width: 0;
+}
+.opening-chapter-card__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: 4px;
+}
+.opening-chapter-card__curve,
+.opening-chapter-card__hook {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
 }
 
 /* --- 内容填充进度 --- */
@@ -1472,5 +1868,285 @@ function goToNovel() {
   font-size: 15px;
   font-weight: 600;
   color: var(--color-text-primary);
+}
+
+/* ===== 故事线可选开关 ===== */
+.step-hint-box__options {
+  display: flex;
+  gap: 20px;
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: var(--color-bg-card);
+  border-radius: 8px;
+  border: 1px solid var(--border-glow);
+}
+
+/* ===== 四幕卡片 ===== */
+.story-acts {
+  margin-bottom: 16px;
+}
+.story-acts__synopsis {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--color-text-secondary);
+  padding: 12px 16px;
+  background: var(--color-bg-card);
+  border-radius: 8px;
+  border: 1px solid var(--border-glow);
+  margin-bottom: 12px;
+}
+.story-acts__grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+.act-card {
+  padding: 14px;
+  background: var(--color-bg-card);
+  border-radius: 8px;
+  border: 1px solid var(--border-glow);
+}
+.act-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.act-card__name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+.act-card__ratio {
+  font-size: 12px;
+  color: var(--color-accent);
+  background: rgba(var(--color-accent-rgb, 99, 102, 241), 0.1);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+.act-card__mission {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  margin-bottom: 8px;
+}
+.act-card__events {
+  margin-bottom: 8px;
+}
+.act-card__event {
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+  line-height: 1.6;
+}
+.act-card__footer {
+  border-top: 1px solid var(--border-glow);
+  padding-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.act-card__turning,
+.act-card__hook {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+.act-card__label {
+  display: inline-block;
+  font-weight: 600;
+  color: var(--color-accent);
+  margin-right: 6px;
+  font-size: 11px;
+}
+.act-card__beats {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border-glow);
+}
+.act-card__beats-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  margin-bottom: 4px;
+}
+.beat-item {
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+  line-height: 1.6;
+}
+.beat-item__name {
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+/* ===== 支线展示 ===== */
+.story-subplots {
+  margin-top: 12px;
+  padding: 12px 16px;
+  background: var(--color-bg-card);
+  border-radius: 8px;
+  border: 1px solid var(--border-glow);
+}
+.story-subplots__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: 8px;
+}
+.subplot-item {
+  display: flex;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+}
+.subplot-item__name {
+  font-weight: 500;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+.subplot-item__acts {
+  color: var(--color-accent);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* ===== 出场规划 ===== */
+.appearance-plan {
+  margin-top: 16px;
+  padding: 16px;
+  background: var(--color-bg-card);
+  border-radius: 8px;
+  border: 1px solid var(--border-glow);
+}
+.appearance-plan__title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+.act-role-tag {
+  display: inline-block;
+  font-size: 12px;
+  margin-right: 8px;
+  color: var(--color-text-tertiary);
+}
+.key-scene-item {
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+  line-height: 1.6;
+}
+
+/* 人物卡片网格 */
+.character-cards { margin-top: 20px; }
+.character-cards__title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: 12px;
+}
+.character-cards__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 14px;
+}
+.char-card {
+  background: var(--color-bg-card);
+  border: 1px solid var(--border-glow);
+  border-radius: 10px;
+  padding: 14px 16px;
+  transition: box-shadow 0.2s;
+}
+.char-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+.char-card--lead { border-left: 3px solid #f56c6c; }
+.char-card--core { border-left: 3px solid #e6a23c; }
+.char-card--support { border-left: 3px solid #909399; }
+.char-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.char-card__name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+.char-card__identity {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  margin-bottom: 8px;
+}
+.char-card__row {
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+  line-height: 1.7;
+}
+.char-card__label {
+  display: inline-block;
+  width: 36px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
+/* 原始文本折叠 */
+.raw-text-details {
+  margin-top: 16px;
+}
+.raw-text-details summary {
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin-bottom: 8px;
+}
+
+/* --- 对话调整区域 --- */
+.step-chat {
+  margin-top: 16px;
+  border-top: 1px solid var(--color-border, rgba(255,255,255,0.08));
+  padding-top: 12px;
+}
+.step-chat__history {
+  max-height: 300px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.step-chat__bubble {
+  padding: 8px 12px;
+  border-radius: 12px;
+  max-width: 80%;
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.step-chat__bubble--user {
+  align-self: flex-end;
+  background: rgba(59, 130, 246, 0.1);
+  color: var(--color-text-primary);
+}
+.step-chat__bubble--assistant {
+  align-self: flex-start;
+  background: var(--color-bg-secondary, rgba(255,255,255,0.04));
+  color: var(--color-text-secondary);
+}
+.step-chat__input {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  align-items: flex-end;
+}
+.step-chat__input .el-textarea {
+  flex: 1;
+}
+.step-chat__confirm {
+  margin-top: 12px;
+  display: flex;
+  justify-content: flex-end;
 }
 </style>

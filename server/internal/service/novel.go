@@ -133,6 +133,7 @@ type OutlineChapterAIRequest struct {
 	ModelName       string `json:"model_name"`
 	UserPrompt      string `json:"user_prompt"`       // 用户自定义指令，追加到 system prompt 末尾
 	ButlerSessionID string `json:"butler_session_id"` // 管家会话 ID
+	ConversationHistory []ConversationMessage `json:"conversation_history,omitempty"` // 对话历史（对话模式调整用）
 }
 
 // AcceptAIResultRequest 采纳 AI 结果请求
@@ -1332,6 +1333,13 @@ func (s *NovelService) OutlineChapterAIAction(ctx context.Context, userID uint, 
 		userPrompt = s.buildOutlineChapterPrompt(req)
 	}
 
+	// 对话模式：注入对话历史到 userPrompt（仅 generate_topic 等管家步骤）
+	if len(req.ConversationHistory) > 0 {
+		if historyText := formatConversationHistory(req.ConversationHistory); historyText != "" {
+			userPrompt += "\n\n" + historyText
+		}
+	}
+
 	// 构建 History JSON（包含 system_prompt + 上下文）
 	historyMap := map[string]interface{}{
 		"system_prompt": systemPrompt,
@@ -1463,7 +1471,7 @@ func (s *NovelService) buildOutlinePrompt(req *GenerateOutlineRequest) string {
 		sb.WriteString(fmt.Sprintf("【背景信息】\n%s\n\n", req.Background))
 	}
 	sb.WriteString(fmt.Sprintf("【剧情思路】\n%s\n\n", req.Plot))
-	sb.WriteString(fmt.Sprintf("请生成约 %d 个章节的大纲，每个章节包含标题和 100-200 字的概要。", req.ChapterNum))
+	sb.WriteString(fmt.Sprintf("必须生成 %d 个章节的大纲（允许±3章浮动，严禁少于 %d 章），每个章节包含标题和 100-200 字的概要。", req.ChapterNum, int(float64(req.ChapterNum)*0.8)))
 	return sb.String()
 }
 

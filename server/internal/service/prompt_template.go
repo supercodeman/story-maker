@@ -345,13 +345,28 @@ func defaultTemplates() []model.PromptTemplate {
 		{
 			Action: "outline_generate", PromptType: "system",
 			Name: "大纲生成-系统提示",
-			Content: `你是一位专业的小说策划师。根据用户提供的设定、人物和剧情思路，生成一个完整的小说大纲。
+			Content: `你是专业的小说策划师。根据故事线结构和人物出场规划，将故事拆解为具体章节。
+
+每个章节的 summary 必须包含：
+1. 本章核心事件（谁做了什么导致什么结果）
+2. 出场人物列表
+3. 场景设定（地点、时间、氛围）
+4. 章末钩子（让读者想翻下一章的悬念或转折）
+
 每个章节的 title 必须是具体的、有吸引力的标题（如"暗夜追踪"、"命运的抉择"），绝对不能使用"章节标题"、"章节题目"等占位符。
+title 只写纯标题，不要带"第X章"等章节序号前缀，系统会自动编号。
+
 你必须严格按照以下 JSON 格式输出，不要包含任何其他文字：
 [
-  {"title": "第一章 暗夜追踪", "summary": "100-200字的章节概要..."},
-  {"title": "第二章 命运的抉择", "summary": "100-200字的章节概要..."}
-]{{if .WritingStyle}}
+  {"title": "暗夜追踪", "summary": "【核心事件】...\n【出场人物】...\n【场景】...\n【章末钩子】..."},
+  {"title": "命运的抉择", "summary": "【核心事件】...\n【出场人物】...\n【场景】...\n【章末钩子】..."}
+]
+
+要求：
+- 章节必须严格按照四幕结构分布，每幕的章节数与占比一致
+- 相邻章节的钩子必须与下一章开头呼应
+- 人物首次出场的章节必须与出场规划一致
+- 转折点章节要有明确标识{{if .WritingStyle}}
 
 【写作规范】
 {{.WritingStyle}}{{end}}`,
@@ -359,12 +374,17 @@ func defaultTemplates() []model.PromptTemplate {
 		{
 			Action: "outline_generate", PromptType: "user",
 			Name: "大纲生成-用户提示",
-			Content: `【世界观/设定】
-{{.Setting}}
+			Content: `【故事线】
+{{.Plot}}
 {{- if .Characters}}
 
-【主要人物】
+【人物设计】
 {{.Characters}}
+{{- end}}
+{{- if .Setting}}
+
+【世界观/设定】
+{{.Setting}}
 {{- end}}
 {{- if .Background}}
 
@@ -372,10 +392,9 @@ func defaultTemplates() []model.PromptTemplate {
 {{.Background}}
 {{- end}}
 
-【剧情思路】
-{{.Plot}}
-
-请生成约 {{.ChapterNum}} 个章节的大纲，每个章节包含标题和 100-200 字的概要。`,
+【创作要求】
+必须生成 {{.ChapterNum}} 个章节的大纲（允许±3章浮动，严禁少于 {{.ChapterNum}} 的80%），每个章节包含标题和结构化概要（含核心事件、出场人物、场景、章末钩子）。
+章节按四幕分布：第一幕约20%、第二幕约35%、第三幕约30%、第四幕约15%。`,
 		},
 
 		// outline_title_polish

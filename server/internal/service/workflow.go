@@ -481,6 +481,39 @@ func (s *WorkflowService) buildGraph(req *SubmitWorkflowRequest) (*orchestrator.
 			}
 			return orchestrator.FallbackModels(primary)
 		}), nil
+	case model.WorkflowTypeOpeningChapter:
+		// 开篇章节增强版工作流：与 full_chapter 相同的上下文注入逻辑
+		budget := agent.NewTokenBudget(req.ModelName)
+		var knowledgeContextOpening string
+		if s.knowledgeSvc != nil && novelID > 0 {
+			knowledgeContextOpening, _, _ = s.knowledgeSvc.BuildKnowledgeContext(novelID, budget.CharsForKnowledge())
+			if knowledgeContextOpening != "" {
+				req.Params["knowledge_context"] = knowledgeContextOpening
+			}
+		}
+		if s.chapterSummarySvc != nil && novelID > 0 {
+			if chapterOrderRaw, ok := req.Params["chapter_sort_order"]; ok {
+				var chapterOrder int
+				switch v := chapterOrderRaw.(type) {
+				case float64:
+					chapterOrder = int(v)
+				case int:
+					chapterOrder = v
+				}
+				if chapterOrder > 0 {
+					summaryContext := s.chapterSummarySvc.GetRelevantContext(novelID, chapterOrder, budget.CharsForPrevContext())
+					if summaryContext != "" {
+						req.Params["prev_context"] = summaryContext
+					}
+				}
+			}
+		}
+		return orchestrator.BuildOpeningChapterGraph(req.ModelName, writingStyle, knowledgeContextOpening, func(primary string) []string {
+			if s.modelRegistry != nil {
+				return s.modelRegistry.GetFallbackChain(0, primary, model.CapTextGen)
+			}
+			return orchestrator.FallbackModels(primary)
+		}), nil
 	case model.WorkflowTypeBatchExpand:
 		chapters, err := parseBatchExpandParams(req.Params)
 		if err != nil {
@@ -658,7 +691,7 @@ func isValidWorkflowType(wfType string) bool {
 	case model.WorkflowTypeFullChapter, model.WorkflowTypeBatchExpand,
 		model.WorkflowTypeNovelRevision, model.WorkflowTypeNovelRevisionExec,
 		model.WorkflowTypeMemoryExtract, model.WorkflowTypeMemoryReview,
-		model.WorkflowTypeHitAnalysis:
+		model.WorkflowTypeHitAnalysis, model.WorkflowTypeOpeningChapter:
 		return true
 	}
 	return false

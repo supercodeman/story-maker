@@ -101,6 +101,13 @@ watch(editor, (ed) => {
 }, { immediate: true })
 
 function handleKeydown(e: KeyboardEvent) {
+  // 标记真实键盘输入（排除功能键、快捷键、撤销/重做）
+  const isModifier = e.ctrlKey || e.metaKey || e.altKey
+  const isFunctionKey = e.key.length > 1 && !['Backspace', 'Delete', 'Enter'].includes(e.key)
+  if (!isModifier && !isFunctionKey) {
+    suggestionCtrl.markInput()
+  }
+
   // Tab 键处理
   if (e.key === 'Tab') {
     // 判断光标是否在段首 — 段首时执行缩进而非联想

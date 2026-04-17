@@ -1,5 +1,5 @@
 // web/src/composables/useNovelButler.ts
-// 小说管家状态机 — 5 步 AI 创作向导
+// 小说管家状态机 — 7 步 AI 创作向导
 import { computed, reactive, watch } from 'vue'
 import { novelApi } from '@/api/novel'
 import { aiApi } from '@/api/ai'
@@ -8,17 +8,25 @@ import { useNovelStore } from '@/store/novel'
 import { useWorkflowStore } from '@/store/workflow'
 
 // 步骤定义
-export type ButlerStep = 'topic' | 'storyline' | 'characters' | 'chapters' | 'knowledge' | 'content'
+export type ButlerStep = 'topic' | 'storyline' | 'characters' | 'chapters' | 'opening_polish' | 'knowledge' | 'content'
 
-const STEPS: ButlerStep[] = ['topic', 'storyline', 'characters', 'chapters', 'knowledge', 'content']
+const STEPS: ButlerStep[] = ['topic', 'storyline', 'characters', 'chapters', 'opening_polish', 'knowledge', 'content']
 
 const STEP_LABELS: Record<ButlerStep, string> = {
   topic: '选题',
   storyline: '故事线',
   characters: '人物设计',
   chapters: '章节生成',
+  opening_polish: '开篇打磨',
   knowledge: '知识图谱',
   content: '内容填充',
+}
+
+// 对话历史消息（对话模式调整用）
+export interface StepMessage {
+  role: 'assistant' | 'user'
+  content: string
+  timestamp: number
 }
 
 // 每步状态
@@ -34,6 +42,11 @@ export interface StepState {
   iterationRound?: number      // 当前轮次
   iterationMaxRounds?: number  // 最大轮次
   iterationPhase?: string      // generating/reviewing/completed/failed
+  // token 消耗统计
+  tokenUsage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number }
+  // 对话模式相关（步骤1/2/3）
+  messages: StepMessage[]   // 对话历史
+  refineInput: string       // 调整输入框内容
 }
 
 // 管家整体状态
@@ -46,7 +59,10 @@ export interface ButlerState {
   chapterNum: number
   outlineChapters: { title: string; summary: string }[]
   outlineTaskId: number | null
-  // 步骤5 特有：知识图谱提取进度
+  // 步骤5 特有：开篇打磨（前5章精细化概要）
+  openingChapters: any[]
+  openingProgress: { phase: 'idle' | 'polishing' | 'generating' | 'done'; current: number; total: number }
+  // 步骤6 特有：知识图谱提取进度
   knowledgeProgress: { phase: 'idle' | 'extracting' | 'parsing' | 'done'; taskId: number | null }
   // 步骤6 特有：内容生成进度
   contentProgress: { total: number; completed: number; current: string }
@@ -56,10 +72,15 @@ export interface ButlerState {
   createdNovelId: number | null
   // 管家会话 ID，串联同一次管家创作的所有任务
   butlerSessionId: string
+  // 故事线结构化数据（从 ---STORY_STRUCTURE--- 提取的 JSON）
+  storylineStructure: string
+  // 故事线可选开关
+  enableBeats: boolean
+  enableSubplots: boolean
 }
 
 function createStepState(): StepState {
-  return { status: 'idle', options: [], selectedIndex: -1, result: '', userHint: '', error: null }
+  return { status: 'idle', options: [], selectedIndex: -1, result: '', userHint: '', error: null, messages: [], refineInput: '' }
 }
 
 function createButlerState(): ButlerState {
@@ -72,17 +93,23 @@ function createButlerState(): ButlerState {
       storyline: createStepState(),
       characters: createStepState(),
       chapters: createStepState(),
+      opening_polish: createStepState(),
       knowledge: createStepState(),
       content: createStepState(),
     },
-    chapterNum: 30,
+    chapterNum: 56,
     outlineChapters: [],
     outlineTaskId: null,
+    openingChapters: [],
+    openingProgress: { phase: 'idle', current: 0, total: 5 },
     knowledgeProgress: { phase: 'idle', taskId: null },
     contentProgress: { total: 0, completed: 0, current: '' },
     originalSetting: '',
     createdNovelId: null,
     butlerSessionId: '',
+    storylineStructure: '',
+    enableBeats: false,
+    enableSubplots: false,
   }
 }
 
@@ -137,12 +164,20 @@ export function useNovelButler(
           saved.steps[step].status = 'idle'
           saved.steps[step].error = null
         }
+        // 兼容旧数据：补充 messages/refineInput 默认值
+        if (!saved.steps[step].messages) saved.steps[step].messages = []
+        if (!saved.steps[step].refineInput) saved.steps[step].refineInput = ''
       }
       // 知识图谱 extracting/parsing 也重置
       if (saved.knowledgeProgress.phase !== 'done' && saved.knowledgeProgress.phase !== 'idle') {
         saved.knowledgeProgress.phase = 'idle'
         saved.knowledgeProgress.taskId = null
         saved.steps.knowledge.status = 'idle'
+      }
+      // 开篇打磨进行中也重置
+      if (saved.openingProgress && saved.openingProgress.phase !== 'done' && saved.openingProgress.phase !== 'idle') {
+        saved.openingProgress.phase = 'idle'
+        saved.steps.opening_polish && (saved.steps.opening_polish.status = 'idle')
       }
 
       Object.assign(state, saved)
@@ -247,6 +282,10 @@ export function useNovelButler(
       await runChapterStep(inputHint)
       return
     }
+    if (step === 'opening_polish') {
+      await runOpeningPolishStep()
+      return
+    }
     if (step === 'knowledge') {
       await runKnowledgeStep()
       return
@@ -298,7 +337,7 @@ export function useNovelButler(
   }
 
   /** 步骤2/3：多轮迭代生成 */
-  async function runIterativeStep(step: 'storyline' | 'characters', userHint?: string) {
+  async function runIterativeStep(step: 'storyline' | 'characters', userHint?: string, conversationHistory?: { role: string; content: string }[]) {
     const stepState = state.steps[step]
     stepState.status = 'generating'
     stepState.options = []
@@ -319,6 +358,13 @@ export function useNovelButler(
         user_prompt: userHint,
         model_name: selectedModel(),
         butler_session_id: state.butlerSessionId || '',
+        conversation_history: conversationHistory,
+        // 故事线步骤传递可选开关
+        ...(step === 'storyline' ? {
+          enable_beats: state.enableBeats,
+          enable_subplots: state.enableSubplots,
+          chapter_num: state.chapterNum || 56,
+        } : {}),
       })
 
       const iterationId = data.iteration_id as string
@@ -340,10 +386,29 @@ export function useNovelButler(
             clearInterval(poll)
             stepState.result = status.final_result
             stepState.status = 'confirmed'
+            // 记录 token 消耗
+            if (status.total_tokens > 0) {
+              stepState.tokenUsage = {
+                prompt_tokens: status.prompt_tokens || 0,
+                completion_tokens: status.completion_tokens || 0,
+                total_tokens: status.total_tokens || 0,
+              }
+            }
+            // 故事线完成时提取结构化数据
+            if (step === 'storyline' && status.structured_data) {
+              state.storylineStructure = status.structured_data
+            }
+            // 追加 assistant message（对话模式用）
+            if (!state.autoMode) {
+              const summary = status.final_result.slice(0, 200) + (status.final_result.length > 200 ? '...' : '')
+              stepState.messages.push({ role: 'assistant', content: summary, timestamp: Date.now() })
+            }
             // 自动推进到下一步
-            const idx = STEPS.indexOf(step)
-            if (idx < STEPS.length - 1) {
-              runStep(STEPS[idx + 1])
+            if (state.autoMode) {
+              const idx = STEPS.indexOf(step)
+              if (idx < STEPS.length - 1) {
+                runStep(STEPS[idx + 1])
+              }
             }
           } else if (status.phase === 'failed') {
             clearInterval(poll)
@@ -361,7 +426,7 @@ export function useNovelButler(
   }
 
   /** 步骤1 的实际生成逻辑（保留原有4选1模式） */
-  async function generateOptions(step: ButlerStep, userHint?: string) {
+  async function generateOptions(step: ButlerStep, userHint?: string, conversationHistory?: { role: string; content: string }[]) {
     const stepState = state.steps[step]
     stepState.status = 'generating'
     stepState.options = []
@@ -385,6 +450,9 @@ export function useNovelButler(
 
     const results: (string | null)[] = [null, null, null, null]
     let completedCount = 0
+    let totalPromptTokens = 0
+    let totalCompletionTokens = 0
+    let totalTotalTokens = 0
 
     for (let i = 0; i < 4; i++) {
       try {
@@ -397,11 +465,16 @@ export function useNovelButler(
           model_name: selectedModel(),
           user_prompt: userHint,
           butler_session_id: state.butlerSessionId || undefined,
+          conversation_history: conversationHistory,
         })
         const taskId = data.task_id as number
         startTaskPoll(taskId, (task) => {
           if (cancelled) return
           completedCount++
+          // 累加 token
+          totalPromptTokens += task.prompt_tokens || 0
+          totalCompletionTokens += task.completion_tokens || 0
+          totalTotalTokens += task.total_tokens || 0
           if (task.status === 'completed') {
             const result = typeof task.result === 'string' ? JSON.parse(task.result) : task.result
             results[i] = result.content || result.characters || ''
@@ -409,6 +482,14 @@ export function useNovelButler(
           // 所有 4 个都完成
           if (completedCount >= 4) {
             stepState.options = results.map(r => r || '（生成失败）')
+            // 记录 token 消耗
+            if (totalTotalTokens > 0) {
+              stepState.tokenUsage = {
+                prompt_tokens: totalPromptTokens,
+                completion_tokens: totalCompletionTokens,
+                total_tokens: totalTotalTokens,
+              }
+            }
             if (stepState.options.every(o => o === '（生成失败）')) {
               stepState.status = 'idle'
               stepState.error = '所有方案生成失败，请重试'
@@ -439,11 +520,56 @@ export function useNovelButler(
     stepState.result = stepState.options[selectedIndex] || ''
     stepState.status = 'confirmed'
 
+    // 追加 assistant message（对话模式用，步骤1选题）
+    if (!state.autoMode && step === 'topic') {
+      const summary = stepState.result.slice(0, 200) + (stepState.result.length > 200 ? '...' : '')
+      stepState.messages.push({ role: 'assistant', content: summary, timestamp: Date.now() })
+    }
+
+    // 非自动模式下步骤1不自动推进（用户可能想对话调整）
+    if (!state.autoMode && step === 'topic') {
+      return
+    }
+
     // 推进到下一步
     const idx = STEPS.indexOf(step)
     if (idx < STEPS.length - 1) {
       const nextStep = STEPS[idx + 1]
       runStep(nextStep)
+    }
+  }
+
+  /** 对话模式：确认当前步骤并推进到下一步 */
+  function confirmStepAndNext(step: ButlerStep) {
+    const idx = STEPS.indexOf(step)
+    if (idx < STEPS.length - 1) {
+      const nextStep = STEPS[idx + 1]
+      runStep(nextStep)
+    }
+  }
+
+  /** 对话模式：基于用户反馈调整当前步骤 */
+  async function refineStep(step: ButlerStep) {
+    const stepState = state.steps[step]
+    const feedback = stepState.refineInput?.trim()
+    if (!feedback) return
+
+    // 追加 user message
+    stepState.messages.push({ role: 'user', content: feedback, timestamp: Date.now() })
+
+    // 构建 conversation_history
+    const conversationHistory = stepState.messages.map(m => ({ role: m.role, content: m.content }))
+
+    // 清空输入
+    stepState.refineInput = ''
+
+    // 根据步骤类型调用不同的生成方法
+    if (step === 'topic') {
+      // 步骤1：重新调用 generateOptions，传 conversation_history
+      await generateOptions(step, feedback, conversationHistory)
+    } else if (step === 'storyline' || step === 'characters') {
+      // 步骤2/3：重新调用 runIterativeStep，传 conversation_history
+      await runIterativeStep(step, feedback, conversationHistory)
     }
   }
 
@@ -461,7 +587,7 @@ export function useNovelButler(
         characters: state.steps.characters.result,
         background: '',
         plot: state.steps.storyline.result,
-        chapter_num: state.chapterNum || 30,
+        chapter_num: state.chapterNum || 56,
         model_name: selectedModel(),
         user_prompt: userHint,
         butler_session_id: state.butlerSessionId || undefined,
@@ -469,6 +595,14 @@ export function useNovelButler(
       state.outlineTaskId = data.task_id
       startTaskPoll(data.task_id, (task) => {
         if (cancelled) return
+        // 记录 token 消耗
+        if (task.total_tokens > 0) {
+          stepState.tokenUsage = {
+            prompt_tokens: task.prompt_tokens || 0,
+            completion_tokens: task.completion_tokens || 0,
+            total_tokens: task.total_tokens || 0,
+          }
+        }
         if (task.status === 'completed') {
           const result = typeof task.result === 'string' ? JSON.parse(task.result) : task.result
           if (result.chapters) {
@@ -519,14 +653,138 @@ export function useNovelButler(
       stepState.status = 'confirmed'
       stepState.result = `已创建小说「${title}」，共 ${state.outlineChapters.length} 章`
 
-      // 推进到知识图谱提取
-      runStep('knowledge')
+      // 推进到开篇打磨步骤
+      runStep('opening_polish')
     } catch (e: any) {
       stepState.error = e.message || '创建小说失败'
     }
   }
 
-  /** 步骤5：知识图谱提取 */
+  /** 步骤5：开篇打磨（前5章概要精细化 + 内容生成） */
+  async function runOpeningPolishStep() {
+    const stepState = state.steps.opening_polish
+    stepState.status = 'generating'
+    stepState.error = null
+    state.openingProgress = { phase: 'polishing', current: 0, total: 5 }
+
+    // 取前5章概要
+    const first5 = state.outlineChapters.slice(0, 5)
+    if (first5.length === 0) {
+      stepState.status = 'confirmed'
+      stepState.result = '无章节数据，跳过开篇打磨'
+      runStep('knowledge')
+      return
+    }
+
+    const chaptersText = first5.map((ch, i) => `第${i + 1}章「${ch.title}」：${ch.summary}`).join('\n\n')
+
+    try {
+      // 阶段1：概要精细化（多轮迭代）
+      const data: any = await novelApi.startButlerIteration({
+        portfolio_id: portfolioId(),
+        action: 'opening_polish',
+        setting: state.steps.storyline.result,
+        prev_step_result: chaptersText,
+        user_prompt: state.steps.characters.result,
+        model_name: selectedModel(),
+        butler_session_id: state.butlerSessionId || '',
+      })
+
+      const iterationId = data.iteration_id as string
+      stepState.iterationId = iterationId
+      stepState.iterationPhase = 'generating'
+
+      // 轮询迭代状态
+      await new Promise<void>((resolve, reject) => {
+        const poll = setInterval(async () => {
+          if (cancelled) {
+            clearInterval(poll)
+            reject(new Error('cancelled'))
+            return
+          }
+          try {
+            const status: any = await novelApi.getButlerIterationStatus(iterationId)
+            stepState.iterationRound = status.round
+            stepState.iterationMaxRounds = status.max_rounds
+            stepState.iterationPhase = status.phase
+
+            if (status.phase === 'completed') {
+              clearInterval(poll)
+              // 记录 token 消耗
+              if (status.total_tokens > 0) {
+                stepState.tokenUsage = {
+                  prompt_tokens: status.prompt_tokens || 0,
+                  completion_tokens: status.completion_tokens || 0,
+                  total_tokens: status.total_tokens || 0,
+                }
+              }
+              // 提取精细化概要
+              if (status.structured_data) {
+                try {
+                  state.openingChapters = JSON.parse(status.structured_data)
+                  // 用精细化概要替换 outlineChapters 前5章的 summary
+                  for (const enhanced of state.openingChapters) {
+                    const idx = (enhanced.chapter_index || 1) - 1
+                    if (idx >= 0 && idx < state.outlineChapters.length && enhanced.enhanced_summary) {
+                      state.outlineChapters[idx].summary = enhanced.enhanced_summary
+                    }
+                  }
+                } catch { /* JSON 解析失败忽略 */ }
+              }
+              state.openingProgress.phase = 'generating'
+              resolve()
+            } else if (status.phase === 'failed') {
+              clearInterval(poll)
+              reject(new Error(status.error || '概要精细化失败'))
+            }
+          } catch { /* 轮询失败不中断 */ }
+        }, 3000)
+      })
+
+      // 阶段2：逐章生成前5章正文（使用 opening_chapter 工作流）
+      if (state.createdNovelId) {
+        await novelStore.fetchChapters(state.createdNovelId)
+        const chapters = novelStore.chapters
+        const openingCount = Math.min(5, chapters.length)
+        state.openingProgress.total = openingCount
+
+        for (let i = 0; i < openingCount; i++) {
+          if (cancelled) break
+          state.openingProgress.current = i + 1
+          const chapter = chapters[i]
+
+          try {
+            await workflowStore.submitWorkflow(
+              portfolioId(),
+              'opening_chapter',
+              selectedModel(),
+              {
+                chapter_id: chapter.id,
+                novel_id: state.createdNovelId,
+                chapter_sort_order: chapter.sort_order,
+              },
+            )
+            await waitForWorkflow()
+          } catch {
+            // 单章失败不中断
+          }
+        }
+      }
+
+      state.openingProgress.phase = 'done'
+      stepState.status = 'confirmed'
+      stepState.result = `前${Math.min(5, first5.length)}章开篇打磨完成`
+
+      // 推进到知识图谱
+      runStep('knowledge')
+    } catch (e: any) {
+      if (e?.message === 'cancelled') return
+      stepState.status = 'idle'
+      stepState.error = e?.message || '开篇打磨失败'
+    }
+  }
+
+  /** 步骤6：知识图谱提取 */
   async function runKnowledgeStep() {
     const stepState = state.steps.knowledge
     stepState.status = 'generating'
@@ -600,8 +858,14 @@ export function useNovelButler(
 
       state.contentProgress = { total: chapters.length, completed: 0, current: '' }
 
-      // 逐章生成内容
-      for (const chapter of chapters) {
+      // 逐章生成内容（跳过开篇打磨已生成的前5章）
+      const openingDone = state.openingProgress?.phase === 'done'
+      const skipCount = openingDone ? Math.min(5, chapters.length) : 0
+      const chaptersToGenerate = chapters.slice(skipCount)
+      state.contentProgress.total = chaptersToGenerate.length
+      state.contentProgress.completed = 0
+
+      for (const chapter of chaptersToGenerate) {
         if (cancelled) break
         state.contentProgress.current = chapter.title
 
@@ -721,7 +985,27 @@ export function useNovelButler(
         }
       }
 
-      // 步骤 5（知识图谱）：查 AI 任务确认是否已提取
+      // 步骤 5（开篇打磨）：检查前5章是否已有内容（有内容说明开篇打磨已完成）
+      if (!firstIncomplete) {
+        try {
+          await novelStore.fetchChapters(novelId)
+          const chapters = novelStore.chapters
+          const first5WithContent = chapters.slice(0, 5).filter((ch: any) => ch.content && ch.content.trim())
+          if (first5WithContent.length >= Math.min(5, chapters.length)) {
+            state.steps.opening_polish.status = 'confirmed'
+            state.steps.opening_polish.result = '前5章开篇打磨已完成'
+            state.openingProgress.phase = 'done'
+          } else {
+            firstIncomplete = 'opening_polish'
+          }
+        } catch {
+          // 查询失败，标记为已完成跳过
+          state.steps.opening_polish.status = 'confirmed'
+          state.steps.opening_polish.result = '开篇打磨状态未知'
+        }
+      }
+
+      // 步骤 6（知识图谱）：查 AI 任务确认是否已提取
       if (!firstIncomplete) {
         try {
           const data: any = await aiApi.listTasks({
@@ -782,6 +1066,8 @@ export function useNovelButler(
     runStep,
     submitStepHint,
     confirmStep,
+    confirmStepAndNext,
+    refineStep,
     runIterativeStep,
     confirmChapters,
     skipContent,

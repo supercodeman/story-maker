@@ -75,7 +75,7 @@
             v-for="ch in novelStore.chapters"
             :key="ch.id"
             class="chapter-item"
-            :class="{ 'chapter-item--active': novelStore.currentChapter?.id === ch.id }"
+            :class="{ 'chapter-item--active': novelStore.currentChapter?.id === ch.id, 'chapter-item--has-content': !!ch.content }"
             @click="handleSelectChapter(ch)"
           >
             <span class="chapter-item__order">{{ ch.sort_order }}.</span>
@@ -121,6 +121,7 @@
                 <div class="summary-diff-loading__header-cell">
                   AI 新内容
                   <el-tag type="warning" size="small" style="margin-left: 8px;">生成中...</el-tag>
+                  <el-button type="danger" text size="small" style="margin-left: auto;" @click="handleCancelAIAction">取消</el-button>
                 </div>
               </div>
               <div class="summary-diff-loading__panels">
@@ -203,6 +204,7 @@
                 <div class="content-diff-loading__header-cell">
                   AI 新内容
                   <el-tag type="warning" size="small" style="margin-left: 8px;">{{ pendingActionLabel }}中...</el-tag>
+                  <el-button type="danger" text size="small" style="margin-left: auto;" @click="handleCancelAIAction">取消</el-button>
                 </div>
               </div>
               <div class="content-diff-loading__panels">
@@ -1101,6 +1103,18 @@ async function handleAIAction(action: string, polishMode?: string) {
   }
 }
 
+async function handleCancelAIAction() {
+  if (!novelStore.pendingTaskId) return
+  try {
+    await import('@/api/ai').then(m => m.aiApi.cancelTask(novelStore.pendingTaskId!))
+    novelStore.discardResult()
+    pendingAction.value = ''
+    ElMessage.info('已取消')
+  } catch {
+    ElMessage.error('取消失败')
+  }
+}
+
 async function handleAccept() {
   if (!novelStore.currentChapter) return
   try {
@@ -1596,6 +1610,11 @@ async function handleResetTemplate() {
   &--active {
     background-color: var(--color-bg-hover); color: var(--color-primary);
     font-weight: 500;
+  }
+  &--has-content {
+    background-color: rgba(103, 194, 58, 0.08);
+    &:hover { background-color: rgba(103, 194, 58, 0.15); }
+    &.chapter-item--active { background-color: rgba(103, 194, 58, 0.15); color: var(--color-primary); }
   }
   &__order { font-size: 12px; color: var(--color-text-muted); min-width: 20px; }
   &__title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

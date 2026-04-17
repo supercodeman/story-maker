@@ -70,7 +70,7 @@ const toolCallingHint = `
 // BuildFullChapterGraph 一键生成完整章节
 // Layer 0: outline（大纲生成，注入知识库）
 // Layer 1: draft（完整章节正文生成，融合角色/场景/对话/排版要求）
-// Layer 2: review_loop（审核-修订循环，最多 3 轮，审核通过即退出）
+// Layer 2: review_loop（审核-修订循环，最多 2 轮，审核通过即退出）
 // writingStyle 为格式化后的写作风格文本，为空则不注入
 // knowledgeContext 为知识图谱上下文文本，为空则不注入
 func BuildFullChapterGraph(modelName string, writingStyle string, knowledgeContext interface{}, fallbackFn FallbackProvider) *Graph {
@@ -194,14 +194,14 @@ issues 格式要求：
 维度说明：
 - plot_coherence：情节与大纲是否一致，有无逻辑漏洞，角色言行是否与大纲设定吻合
 - narrative_quality：文笔节奏、对话自然度、描写层次、与前文衔接
-- formatting：排版规范（段首无空格、段间空1行、对话格式）、字数在800-1500字区间
+- formatting：排版规范（段首无空格、段间空1行、对话格式）、字数在1000-1500字区间
 - ai_artifacts（权重最高）：形容词堆砌、煽情总结句、重复句式、万能过渡词（然而/就在这时）、直白心理旁白（他心中一震）、套路化反应（众人皆惊）、同义反复、陈词滥调比喻
 
-判定：overall_score>=75则passed=true。ai_artifacts<70则直接passed=false。字数不足800直接passed=false。
+判定：overall_score>=75则passed=true。ai_artifacts<70则直接passed=false。字数不足1000直接passed=false。
 仅输出JSON。`
 
 	// 修订 prompt（精准逐条执行：基于三元组 issues 定位原文并修改）
-	revisionPrompt := `根据审核意见修订以下章节。修订后骨架不少于800字。
+	revisionPrompt := `根据审核意见修订以下章节。修订后骨架不少于1000字。
 
 【审核意见】
 {{.review}}
@@ -292,6 +292,222 @@ issues 格式要求：
 	})
 
 	// 添加边
+	g.AddEdge("outline", "draft")
+
+	return g
+}
+
+// BuildOpeningChapterGraph 开篇章节增强版工作流
+// 基于 BuildFullChapterGraph 增强：注入开篇专属要求，字数提升到 ~2000 字，审核通过分数提升到 80
+func BuildOpeningChapterGraph(modelName string, writingStyle string, knowledgeContext interface{}, fallbackFn FallbackProvider) *Graph {
+	g := NewGraph()
+	fb := fallbackFn(modelName)
+	contentFb := filterProviders(fb, "qwen", "zhipu")
+
+	formatSpec := `【排版规范】
+- 段首无空格无缩进，段落间空1行，段内不换行
+- 对话用""包裹，后接动作/心理不换行
+- 章节标题仅"第X章 标题"格式，标题下空1行接正文
+- 每段聚焦一个场景/动作/心理/对话，单段不超5-6行
+- 禁止：加粗、斜体、多余空行空格、agent标识、格式备注`
+
+	antiAISpec := `
+【文风禁忌】
+1. 禁止形容词堆砌（"深邃的眼眸""凌厉的气势"），用具体动作替代
+2. 禁止煽情总结句（"他知道，这一切才刚刚开始""命运的齿轮开始转动"）
+3. 禁止连续相同句式（连续"他……"开头），变换主语和节奏
+4. 禁止万能过渡词（"然而""与此同时""就在这时"），用动作/场景切换过渡
+5. 禁止直白心理旁白（"他心中一震""他暗暗想到"），用生理反应间接表现
+6. 禁止套路化反应（"众人皆惊""全场哗然"），写具体人物的具体反应
+7. 禁止同义反复（"他很愤怒，怒火在胸中燃烧"），只保留更强的表达
+8. 禁止陈词滥调比喻（"如同暴风雨般"），一段最多一个且必须贴合场景`
+
+	styleSuffix := ""
+	if writingStyle != "" {
+		styleSuffix = "\n\n【写作规范】\n" + writingStyle
+	}
+
+	knowledgeSuffix := ""
+	if kc, ok := knowledgeContext.(string); ok && kc != "" {
+		knowledgeSuffix = "\n\n【知识图谱（人物/情节/伏笔/世界观）】\n" + kc
+	}
+
+	// Layer 0: 大纲生成（注入开篇专属要求）
+	g.AddNode(&Node{
+		ID:             "outline",
+		TaskType:       "text_gen",
+		ModelName:      modelName,
+		FallbackModels: contentFb,
+		Prompt: `为第{{.chapter_order}}章「{{.title}}」设计大纲。这是小说开篇章节，需要特别精心设计。禁止输出其他章节或全书规划。
+
+章节编号：第{{.chapter_order}}章
+章节标题：{{.title}}
+章节概要：{{.background}}
+{{if .prev_context}}
+【前文回顾】
+{{.prev_context}}
+{{end}}` + knowledgeSuffix + `
+
+【开篇专属要求】
+1. 故事基调建立：通过环境描写和第一个场景确立整部小说的氛围和调性
+2. 人物亮相设计：首次出场的角色必须有鲜明的视觉印象（外貌特写+标志性动作+第一句台词）
+3. 钩子密度：每个场景至少埋一个悬念或伏笔，章末必须有强钩子
+4. 情绪节奏：开篇不宜全程高燃，要有张弛，让读者有代入时间
+
+要求：
+1. 列出4-6个场景，每个写明：地点、核心事件、出场人物、情绪基调
+2. 与前文衔接但不重复，人物行为符合知识图谱设定
+3. 情节要有意外感，避免套路模板
+4. 大纲中直接写出关键角色的外貌特征和说话风格要点` + styleSuffix + `
+
+直接输出大纲，不要解释。`,
+		OutputKey: "outline_result",
+		InputMap:  map[string]string{"title": "title", "background": "background", "prev_context": "prev_context", "chapter_order": "chapter_sort_order"},
+		MaxTokens: 4096,
+	})
+
+	// Layer 1: 正文生成（~2000字，比普通章节更充实）
+	g.AddNode(&Node{
+		ID:             "draft",
+		TaskType:       "text_gen",
+		ModelName:      modelName,
+		FallbackModels: contentFb,
+		EnableTools:    true,
+		SystemPrompt:   novelWritingSystemPrompt + toolCallingHint,
+		Prompt: `根据大纲撰写第{{.chapter_order}}章「{{.title}}」的正文，约2000字。
+只写第{{.chapter_order}}章。这是小说开篇章节，质量要求高于普通章节。
+
+在动笔前，请先使用工具查询本章涉及的角色档案和相关设定。
+
+【章节大纲】
+{{.outline}}
+
+【开篇写作要求】
+1. 覆盖大纲中所有场景，按场景顺序推进，不遗漏关键事件
+2. 每个场景用3-4句建立感官锚点（视觉+听觉+触觉/嗅觉），营造沉浸感
+3. 首次出场的角色必须有记忆点：一个外貌特写+一个标志性动作+至少一句有个性的台词
+4. 关键对话直接写出完整台词（每场景3-4轮核心对话），展现人物性格
+5. 情节转折和人物情感变化必须体现，用动作或生理反应表现
+6. 章末必须有强钩子：悬念、反转或情感冲击，让读者想翻下一页
+7. 字数约2000字，不要注水但也不要过于精简
+` + antiAISpec + `
+
+` + formatSpec + styleSuffix + `
+
+直接输出正文，不要解释或标注。`,
+		OutputKey: "final_result",
+		InputMap:  map[string]string{"outline": "outline_result", "title": "title", "chapter_order": "chapter_sort_order"},
+		DependsOn: []string{"outline"},
+		MaxTokens: 16384,
+	})
+
+	// 审核 prompt（开篇专属维度）
+	reviewPrompt := `审核以下开篇章节正文（约2000字），重点关注开篇质量。
+
+【大纲】
+{{.outline}}
+
+【正文】
+{{.draft}}
+
+以JSON输出审核结果：
+{"passed":bool,"overall_score":0-100,"dimensions":{"plot_coherence":{"score":0-100,"issues":[{"quote":"原文片段","problem":"问题描述","fix":"修改建议"}]},"narrative_quality":{"score":0-100,"issues":[...]},"formatting":{"score":0-100,"issues":[...]},"ai_artifacts":{"score":0-100,"issues":[...]}},"revision_instructions":"修改方向"}
+
+开篇专属审核维度（在 narrative_quality 中额外关注）：
+- 人物亮相是否有记忆点（外貌特写+标志性动作+个性台词）
+- 故事基调是否明确建立
+- 章末钩子是否有效（能否驱动读者继续阅读）
+- 感官描写是否充分（每场景至少2-3处）
+
+判定：overall_score>=80则passed=true。ai_artifacts<70则直接passed=false。字数不足1500直接passed=false。
+仅输出JSON。`
+
+	revisionPrompt := `根据审核意见修订以下开篇章节。修订后正文不少于1800字。
+
+【审核意见】
+{{.review}}
+
+【原始章节】
+{{.draft}}
+
+修订方法：
+1. 逐条处理审核意见中 issues 列表的每个问题
+2. 在原文中找到 quote 引用的位置
+3. 按 fix 建议修改该处，保持上下文连贯
+4. 未被 issues 提及的段落保持原样
+
+修订原则：
+- AI痕迹：堆砌→精准动词；煽情总结→删除；心理旁白→生理反应；套路反应→具体人物反应
+- 排版：段首无空格，段间空1行，段内不换行，对话用""包裹且后接动作不换行
+- 开篇特别注意：人物亮相要有记忆点，章末钩子要有力
+
+直接输出修订后的完整章节正文。不要给修订说明。`
+
+	// Layer 2: 审核-修订循环（通过分数提升到 80，字数下限 1500）
+	g.AddLoopNode(&LoopNode{
+		ID:        "review_loop",
+		DependsOn: []string{"draft"},
+		Config: LoopConfig{
+			MaxRounds:   2,
+			OnExhausted: ExhaustedContinue,
+
+			ExitCondition: func(state *SharedState, round int) bool {
+				result, ok := parseReviewResult(state, "review_loop.latest.review_result")
+				if !ok {
+					return true
+				}
+				if !result.Passed {
+					return false
+				}
+				if contentTooShort(state, "final_result", 1500) {
+					return false
+				}
+				return true
+			},
+
+			SubGraphBuilder: func(round int) *Graph {
+				sub := NewGraph()
+
+				sub.AddNode(&Node{
+					ID:             "review",
+					TaskType:       "text_gen",
+					ModelName:      "deepseek",
+					FallbackModels: []string{modelName},
+					SkipOnAllFail:  true,
+					Prompt:         reviewPrompt,
+					OutputKey:      "review_result",
+					InputMap: map[string]string{
+						"outline": "outline_result",
+						"draft":   "final_result",
+					},
+					MaxTokens: 2048,
+				})
+
+				sub.AddNode(&Node{
+					ID:             "revision",
+					TaskType:       "text_polish",
+					ModelName:      modelName,
+					FallbackModels: contentFb,
+					SystemPrompt:   novelWritingSystemPrompt,
+					Prompt:         revisionPrompt,
+					OutputKey:      "final_result",
+					InputMap: map[string]string{
+						"review": "review_result",
+						"draft":  "final_result",
+					},
+					DependsOn: []string{"review"},
+					MaxTokens: 16384,
+				})
+
+				sub.AddConditionalEdge("review", "revision", func(state *SharedState) bool {
+					return reviewNotPassed(state, "review_result") || contentTooShort(state, "final_result", 1500)
+				})
+
+				return sub
+			},
+		},
+	})
+
 	g.AddEdge("outline", "draft")
 
 	return g

@@ -19,6 +19,7 @@ server/tmp/
 *.dylib
 *.test
 *.out
+docs/
 vendor/
 server/vendor_local/
 

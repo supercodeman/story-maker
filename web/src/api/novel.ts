@@ -131,17 +131,22 @@ export const novelApi = {
     model_name?: string
     user_prompt?: string
     butler_session_id?: string
+    conversation_history?: { role: string; content: string }[]
   }) => request.post('/outline/chapter-ai', data),
 
   // 管家多轮迭代
   startButlerIteration: (data: {
     portfolio_id: number
-    action: 'storyline' | 'characters'
+    action: 'storyline' | 'characters' | 'opening_polish'
     setting: string
     prev_step_result: string
     user_prompt?: string
     model_name: string
     butler_session_id: string
+    enable_beats?: boolean
+    enable_subplots?: boolean
+    chapter_num?: number
+    conversation_history?: { role: string; content: string }[]
   }) => request.post('/outline/butler-iterate', data),
   getButlerIterationStatus: (iterationId: string) =>
     request.get(`/outline/butler-iterate/${iterationId}`),

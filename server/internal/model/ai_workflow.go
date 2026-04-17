@@ -53,4 +53,5 @@ const (
 	WorkflowTypeMemoryExtract     = "memory_extract"
 	WorkflowTypeMemoryReview      = "memory_review"
 	WorkflowTypeHitAnalysis       = "hit_analysis"
+	WorkflowTypeOpeningChapter    = "opening_chapter"
 )

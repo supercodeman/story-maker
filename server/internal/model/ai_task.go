@@ -76,6 +76,8 @@ const (
 	TaskTypeButlerStorylineReview  = "butler_storyline_review"  // 故事线 Review 修改
 	TaskTypeButlerCharactersDraft  = "butler_characters_draft"  // 人物设计草稿生成
 	TaskTypeButlerCharactersReview = "butler_characters_review" // 人物设计 Review 修改
+	TaskTypeButlerOpeningDraft     = "butler_opening_draft"     // 前5章概要精细化
+	TaskTypeButlerOpeningReview    = "butler_opening_review"    // 前5章概要审查
 
 	// 记忆提取相关任务类型
 	TaskTypeMemoryFeatureExtract   = "memory_feature_extract"
