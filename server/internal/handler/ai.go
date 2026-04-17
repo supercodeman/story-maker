@@ -252,7 +252,19 @@ func (h *AIHandler) ListTasks(c *gin.Context) {
 		}
 	}
 
-	tasks, total, err := h.aiService.ListTasks(c.Request.Context(), userID, portfolioID, page, pageSize, taskTypes)
+	// 解析 butler_session_id 过滤参数
+	butlerSessionID := c.Query("butler_session_id")
+
+	// 解析 novel_id 过滤参数
+	var novelID uint
+	if nidStr := c.Query("novel_id"); nidStr != "" {
+		nid, err := strconv.ParseUint(nidStr, 10, 32)
+		if err == nil {
+			novelID = uint(nid)
+		}
+	}
+
+	tasks, total, err := h.aiService.ListTasks(c.Request.Context(), userID, portfolioID, page, pageSize, taskTypes, butlerSessionID, novelID)
 	if err != nil {
 		InternalError(c, err.Error())
 		return

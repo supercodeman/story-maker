@@ -57,14 +57,20 @@ func (d *AITaskDAO) ListTasksByUser(ctx context.Context, userID uint, limit, off
 	return tasks, total, err
 }
 
-// ListTasksByPortfolio 获取作品集的任务列表，可选按 taskTypes 过滤
-func (d *AITaskDAO) ListTasksByPortfolio(ctx context.Context, portfolioID uint, limit, offset int, taskTypes []string) ([]*model.AITask, int64, error) {
+// ListTasksByPortfolio 获取作品集的任务列表，可选按 taskTypes / butlerSessionID / novelID 过滤
+func (d *AITaskDAO) ListTasksByPortfolio(ctx context.Context, portfolioID uint, limit, offset int, taskTypes []string, butlerSessionID string, novelID uint) ([]*model.AITask, int64, error) {
 	var tasks []*model.AITask
 	var total int64
 
 	query := d.db.WithContext(ctx).Where("portfolio_id = ?", portfolioID)
 	if len(taskTypes) > 0 {
 		query = query.Where("task_type IN ?", taskTypes)
+	}
+	if butlerSessionID != "" {
+		query = query.Where("butler_session_id = ?", butlerSessionID)
+	}
+	if novelID > 0 {
+		query = query.Where("novel_id = ?", novelID)
 	}
 
 	if err := query.Model(&model.AITask{}).Count(&total).Error; err != nil {

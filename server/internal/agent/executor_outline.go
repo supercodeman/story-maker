@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"regexp"
 	"strings"
 
@@ -15,18 +16,36 @@ import (
 // 从 History JSON 中读取 system prompt（Service 层模板渲染后传入），fallback 到默认值
 type OutlineTaskExecutor struct{}
 
+const outlineBatchSize = 10 // 每批生成的章节数
+
 func (e *OutlineTaskExecutor) Execute(ctx context.Context, ec *ExecContext) (interface{}, error) {
-	// 优先从 History JSON 中读取 system prompt（Service 层模板渲染后传入）
+	// 从 History JSON 中读取 system prompt 和 chapter_num
 	systemPrompt := "你是一位专业的小说策划师。根据用户提供的设定、人物和剧情思路，生成一个完整的小说大纲。\ntitle 只写纯标题（如\"暗夜追踪\"、\"命运的抉择\"），不要带\"第X章\"等章节序号前缀，系统会自动编号。\n你必须严格按照以下 JSON 格式输出，不要包含任何其他文字：\n[\n  {\"title\": \"暗夜追踪\", \"summary\": \"100-200字的章节概要...\"},\n  {\"title\": \"命运的抉择\", \"summary\": \"100-200字的章节概要...\"}\n]"
+	chapterNum := 0
+
 	if ec.Task.History != "" {
 		var historyData map[string]interface{}
 		if err := json.Unmarshal([]byte(ec.Task.History), &historyData); err == nil {
 			if sp, ok := historyData["system_prompt"].(string); ok && sp != "" {
 				systemPrompt = sp
 			}
+			if cn, ok := historyData["chapter_num"].(float64); ok {
+				chapterNum = int(cn)
+			}
 		}
 	}
 
+	// 如果章节数 <= outlineBatchSize，单次生成
+	if chapterNum <= outlineBatchSize {
+		return e.generateSingle(ctx, ec, systemPrompt)
+	}
+
+	// 分批串行生成
+	return e.generateBatched(ctx, ec, systemPrompt, chapterNum)
+}
+
+// generateSingle 单次生成（章节数较少时）
+func (e *OutlineTaskExecutor) generateSingle(ctx context.Context, ec *ExecContext, systemPrompt string) (interface{}, error) {
 	history := []ChatMessage{
 		{Role: "system", Content: systemPrompt},
 	}
@@ -35,7 +54,7 @@ func (e *OutlineTaskExecutor) Execute(ctx context.Context, ec *ExecContext) (int
 		Model:     ec.ModelVersion,
 		Prompt:    ec.Task.Prompt,
 		History:   history,
-		MaxTokens: 32768,
+		MaxTokens: 8192,
 	}
 
 	resp, err := ec.Provider.GenerateText(ctx, req)
@@ -51,13 +70,112 @@ func (e *OutlineTaskExecutor) Execute(ctx context.Context, ec *ExecContext) (int
 	result := map[string]interface{}{
 		"chapters": chapters,
 	}
-
-	// 附带 token 消耗统计
 	if resp.Usage != nil {
 		result["usage"] = *resp.Usage
 	}
-
 	return result, nil
+}
+
+// generateBatched 分批串行生成（章节数较多时，每批 outlineBatchSize 章）
+func (e *OutlineTaskExecutor) generateBatched(ctx context.Context, ec *ExecContext, systemPrompt string, totalChapters int) (interface{}, error) {
+	var allChapters []outlineChapter
+	var totalUsage TokenUsage
+
+	generated := 0
+	batchIdx := 0
+
+	for generated < totalChapters {
+		batchIdx++
+		remaining := totalChapters - generated
+		batchSize := outlineBatchSize
+		if remaining < batchSize {
+			batchSize = remaining
+		}
+
+		// 构建分批 prompt
+		batchPrompt := e.buildBatchPrompt(ec.Task.Prompt, allChapters, generated+1, generated+batchSize, totalChapters)
+
+		log.Printf("[outline-batch] batch %d: generating chapters %d-%d of %d", batchIdx, generated+1, generated+batchSize, totalChapters)
+
+		history := []ChatMessage{
+			{Role: "system", Content: systemPrompt},
+		}
+
+		req := &TextRequest{
+			Model:     ec.ModelVersion,
+			Prompt:    batchPrompt,
+			History:   history,
+			MaxTokens: 8192,
+		}
+
+		resp, err := ec.Provider.GenerateText(ctx, req)
+		if err != nil {
+			return nil, fmt.Errorf("batch %d failed: %w", batchIdx, err)
+		}
+
+		chapters, parseErr := parseOutlineChapters(resp.Content)
+		if parseErr != nil {
+			return nil, fmt.Errorf("batch %d parse failed: %w, raw: %s", batchIdx, parseErr, resp.Content)
+		}
+
+		log.Printf("[outline-batch] batch %d: got %d chapters", batchIdx, len(chapters))
+
+		allChapters = append(allChapters, chapters...)
+		generated += len(chapters)
+
+		// 累加 token 消耗
+		if resp.Usage != nil {
+			totalUsage.PromptTokens += resp.Usage.PromptTokens
+			totalUsage.CompletionTokens += resp.Usage.CompletionTokens
+			totalUsage.TotalTokens += resp.Usage.TotalTokens
+		}
+	}
+
+	log.Printf("[outline-batch] completed: total %d chapters in %d batches", len(allChapters), batchIdx)
+
+	result := map[string]interface{}{
+		"chapters": allChapters,
+		"usage":    totalUsage,
+	}
+	return result, nil
+}
+
+// buildBatchPrompt 构建分批 prompt，包含前面已生成章节的标题摘要
+func (e *OutlineTaskExecutor) buildBatchPrompt(originalPrompt string, prevChapters []outlineChapter, startIdx, endIdx, totalChapters int) string {
+	if len(prevChapters) == 0 {
+		// 第一批：在原始 prompt 后追加批次指令
+		return fmt.Sprintf("%s\n\n【本次生成范围】\n请先生成第 %d 到第 %d 章（共 %d 章中的前 %d 章）。严格按 JSON 数组格式输出，不要包含其他文字。",
+			originalPrompt, startIdx, endIdx, totalChapters, endIdx-startIdx+1)
+	}
+
+	// 后续批次：近距离章节保留完整摘要，远距离章节只保留标题
+	var prevSummary strings.Builder
+	prevSummary.WriteString("【已生成的章节】\n")
+	recentStart := len(prevChapters) - outlineBatchSize // 最近一批的起始位置
+	if recentStart < 0 {
+		recentStart = 0
+	}
+	for i, ch := range prevChapters {
+		if i < recentStart {
+			// 远距离章节：只保留标题
+			prevSummary.WriteString(fmt.Sprintf("第%d章「%s」\n", i+1, ch.Title))
+		} else {
+			// 近距离章节：保留完整摘要
+			prevSummary.WriteString(fmt.Sprintf("第%d章「%s」：%s\n", i+1, ch.Title, ch.Summary))
+		}
+	}
+
+	return fmt.Sprintf("%s\n\n%s\n【本次生成范围】\n请继续生成第 %d 到第 %d 章（共 %d 章），与前面章节保持剧情连贯、节奏一致。严格按 JSON 数组格式输出，不要包含其他文字。",
+		originalPrompt, prevSummary.String(), startIdx, endIdx, totalChapters)
+}
+
+// truncate 截断字符串
+func truncate(s string, maxRunes int) string {
+	runes := []rune(s)
+	if len(runes) <= maxRunes {
+		return s
+	}
+	return string(runes[:maxRunes]) + "…"
 }
 
 // outlineChapter 大纲章节结构
@@ -178,6 +296,12 @@ func (e *OutlineChapterExecutor) Execute(ctx context.Context, ec *ExecContext) (
 		maxTokens = 8192
 	case model.TaskTypeButlerCharactersReview:
 		defaultSystemPrompt = "你是一位严格的小说编辑，专门审查人物设计质量。发现问题并直接修改，输出 JSON 格式的审查结果。"
+		maxTokens = 8192
+	case model.TaskTypeButlerOpeningDraft:
+		defaultSystemPrompt = "你是一位资深小说作家，擅长精细化章节概要。根据用户提供的章节大纲，对前5章概要进行精细化打磨，补充细节和情感节奏。输出纯文本。"
+		maxTokens = 8192
+	case model.TaskTypeButlerOpeningReview:
+		defaultSystemPrompt = "你是一位严格的小说编辑，专门审查章节概要质量。发现问题并直接修改，输出 JSON 格式的审查结果。"
 		maxTokens = 8192
 	default:
 		return nil, fmt.Errorf("unsupported outline chapter task type: %s", task.TaskType)

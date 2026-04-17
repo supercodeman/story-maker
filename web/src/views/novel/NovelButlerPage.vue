@@ -379,22 +379,14 @@
               </el-table>
             </div>
 
-            <!-- 人物设计：关系矩阵表格 -->
+            <!-- 人物设计：关系图 -->
             <div v-if="state.currentStep === 'characters' && relationMatrix.length > 0" class="relation-matrix">
-              <div class="relation-matrix__title">人物关系矩阵</div>
-              <el-table :data="relationMatrix" border size="small" style="margin-top: 8px;">
-                <el-table-column prop="from" label="人物A" width="100" />
-                <el-table-column prop="to" label="人物B" width="100" />
-                <el-table-column prop="relation" label="关系" width="120" />
-                <el-table-column prop="detail" label="具体描述" />
-                <el-table-column prop="tension" label="张力" width="80">
-                  <template #default="{ row }">
-                    <el-tag :type="row.tension === 'high' ? 'danger' : row.tension === 'medium' ? 'warning' : 'info'" size="small">
-                      {{ row.tension }}
-                    </el-tag>
-                  </template>
-                </el-table-column>
-              </el-table>
+              <div class="relation-matrix__title">人物关系图</div>
+              <ButlerRelationGraph
+                :characters="characterCards"
+                :relations="relationMatrix"
+                style="margin-top: 8px;"
+              />
             </div>
             <div v-if="currentStepState.tokenUsage" class="token-usage">
               输入 {{ currentStepState.tokenUsage.prompt_tokens.toLocaleString() }} · 输出 {{ currentStepState.tokenUsage.completion_tokens.toLocaleString() }} · 合计 {{ currentStepState.tokenUsage.total_tokens.toLocaleString() }} tokens
@@ -527,6 +519,17 @@
             <div class="step-header__badge">5</div>
             <div class="step-header__title">开篇打磨</div>
             <div class="step-header__status" :class="`step-header__status--${state.steps.opening_polish.status}`">{{ stepStatusText }}</div>
+          </div>
+
+          <!-- idle：等待用户触发 -->
+          <div v-if="state.steps.opening_polish.status === 'idle'" class="step-idle-action">
+            <p style="color: #666; margin-bottom: 16px;">对前5章概要进行精细化打磨，并生成开篇正文内容。</p>
+            <button class="action-btn action-btn--primary" @click="runStep('opening_polish')">
+              开始打磨
+            </button>
+            <button class="action-btn action-btn--secondary" style="margin-left: 10px;" @click="skipOpeningPolish">
+              跳过此步
+            </button>
           </div>
 
           <!-- generating：两阶段进度 -->
@@ -685,6 +688,7 @@ import { useNovelButler } from '@/composables/useNovelButler'
 import { novelApi, type Novel } from '@/api/novel'
 import { connectWebSocket, disconnectWebSocket } from '@/utils/websocket'
 import ModelSelector from '@/components/common/ModelSelector.vue'
+import ButlerRelationGraph from './ButlerRelationGraph.vue'
 
 const props = defineProps<{ id: string; pid: string }>()
 const router = useRouter()
@@ -710,18 +714,22 @@ const {
   isAllDone,
   startButler,
   closeButler,
+  stopAllPolls,
   submitStepHint,
+  runStep,
   confirmStep,
   confirmStepAndNext,
   refineStep,
   runIterativeStep,
   confirmChapters,
   skipContent,
+  skipOpeningPolish,
   retryCurrentStep,
   saveState,
   restoreState,
   clearSavedState,
   restoreFromTasks,
+  restoreFromAITasks,
 } = useNovelButler(
   () => Number(props.pid),
   () => selectedModel.value,
@@ -796,13 +804,21 @@ onMounted(async () => {
     mode.value = 'create'
     started.value = true
   } else {
-    // 默认展示列表
-    await loadButlerNovels()
+    // localStorage 无数据，尝试从 ai_task 恢复（butler_session_id 独立存储）
+    const restoredFromTasks = await restoreFromAITasks()
+    if (restoredFromTasks) {
+      mode.value = 'create'
+      started.value = true
+    } else {
+      // 都无法恢复，展示列表
+      await loadButlerNovels()
+    }
   }
 })
 
 onUnmounted(() => {
-  closeButler()
+  // 仅停止轮询和断开 WebSocket，不清除 localStorage（页面刷新需要恢复状态）
+  stopAllPolls()
   disconnectWebSocket()
 })
 
@@ -1460,6 +1476,8 @@ function goToNovel() {
   position: sticky;
   top: 0;
   z-index: 1;
+  background: var(--color-bg-primary, #fff);
+  padding: 8px 0;
 }
 .chapter-preview__count {
   font-size: 14px;

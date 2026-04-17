@@ -1181,6 +1181,7 @@ func (s *NovelService) GenerateOutline(ctx context.Context, userID uint, req *Ge
 	// 将 system prompt 通过 History JSON 传给 executor
 	historyData := map[string]interface{}{
 		"system_prompt": systemPrompt,
+		"chapter_num":   req.ChapterNum,
 	}
 	historyJSON, _ := json.Marshal(historyData)
 
@@ -1709,6 +1710,10 @@ func (s *NovelService) RepairButlerNovelLinks(ctx context.Context, portfolioID u
 		model.TaskTypeButlerGenerateStoryline,
 		model.TaskTypeButlerGenerateCharacters,
 		model.TaskTypeOutlineGenerate,
+		model.TaskTypeButlerStorylineDraft,
+		model.TaskTypeButlerStorylineReview,
+		model.TaskTypeButlerCharactersDraft,
+		model.TaskTypeButlerCharactersReview,
 	}
 
 	// 查出所有孤立的管家任务
@@ -1882,12 +1887,15 @@ func (s *NovelService) extractButlerGroupData(tasks []*model.AITask) (topic, sto
 		if task.Result == "" {
 			continue
 		}
+		var content, chars string
 		var resultMap map[string]interface{}
-		if json.Unmarshal([]byte(task.Result), &resultMap) != nil {
-			continue
+		if json.Unmarshal([]byte(task.Result), &resultMap) == nil {
+			content, _ = resultMap["content"].(string)
+			chars, _ = resultMap["characters"].(string)
+		} else {
+			// result 不是 JSON，直接用原文
+			content = task.Result
 		}
-		content, _ := resultMap["content"].(string)
-		chars, _ := resultMap["characters"].(string)
 
 		switch task.TaskType {
 		case model.TaskTypeButlerGenerateTopic:
@@ -1895,12 +1903,12 @@ func (s *NovelService) extractButlerGroupData(tasks []*model.AITask) (topic, sto
 				topic = content
 				log.Printf("[extractButlerGroupData] 从 butler_generate_topic result.content 提取 topic, len=%d", len(topic))
 			}
-		case model.TaskTypeButlerGenerateStoryline:
+		case model.TaskTypeButlerGenerateStoryline, model.TaskTypeButlerStorylineDraft, model.TaskTypeButlerStorylineReview:
 			if storyline == "" && content != "" {
 				storyline = content
-				log.Printf("[extractButlerGroupData] 从 butler_generate_storyline result.content 提取 storyline, len=%d", len(storyline))
+				log.Printf("[extractButlerGroupData] 从 %s result.content 提取 storyline, len=%d", task.TaskType, len(storyline))
 			}
-		case model.TaskTypeButlerGenerateCharacters:
+		case model.TaskTypeButlerGenerateCharacters, model.TaskTypeButlerCharactersDraft, model.TaskTypeButlerCharactersReview:
 			if characters == "" {
 				if chars != "" {
 					characters = chars
@@ -1908,7 +1916,7 @@ func (s *NovelService) extractButlerGroupData(tasks []*model.AITask) (topic, sto
 					characters = content
 				}
 				if characters != "" {
-					log.Printf("[extractButlerGroupData] 从 butler_generate_characters result 提取 characters, len=%d", len(characters))
+					log.Printf("[extractButlerGroupData] 从 %s result 提取 characters, len=%d", task.TaskType, len(characters))
 				}
 			}
 		}

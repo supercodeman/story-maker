@@ -15,7 +15,7 @@ const (
 	qwenBaseURL           = "https://dashscope.aliyuncs.com/compatible-mode/v1"
 	qwenChatEndpoint      = "/chat/completions"
 	qwenImageEndpoint     = "/images/generations"
-	qwenDefaultModel      = "qwen-max"
+	qwenDefaultModel      = "deepseek-v3"
 	qwenDefaultImageModel = "wanx-2.1"
 	qwenTimeout           = 300 * time.Second
 )
@@ -299,7 +299,7 @@ func (q *QwenProvider) Name() string {
 
 // FallbackModels 返回同 Provider 内的降级模型列表
 func (q *QwenProvider) FallbackModels() []string {
-	return []string{"deepseek-v3.2", "deepseek-v3", "qwen-max"}
+	return []string{"deepseek-v3.2", "deepseek-v3", "MiniMax-M2.5"}
 }
 
 // Capabilities 返回千问支持的能力列表

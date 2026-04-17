@@ -130,6 +130,7 @@ export function useNovelButler(
   // ========== 状态持久化 ==========
 
   const STORAGE_KEY = `butler-state-${portfolioId()}`
+  const SESSION_KEY = `novel_butler_session_id`
 
   let saveTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -173,6 +174,12 @@ export function useNovelButler(
         saved.knowledgeProgress.phase = 'idle'
         saved.knowledgeProgress.taskId = null
         saved.steps.knowledge.status = 'idle'
+      }
+      // 兼容：result 可能存了 JSON 格式，提取纯文本
+      for (const step of ['topic', 'storyline', 'characters'] as const) {
+        if (saved.steps[step].result && saved.steps[step].result.startsWith('{')) {
+          saved.steps[step].result = extractTaskResultText(saved.steps[step].result)
+        }
       }
       // 开篇打磨进行中也重置
       if (saved.openingProgress && saved.openingProgress.phase !== 'done' && saved.openingProgress.phase !== 'idle') {
@@ -244,6 +251,8 @@ export function useNovelButler(
     Object.assign(state, createButlerState())
     state.active = true
     state.butlerSessionId = crypto.randomUUID()
+    // 将 session_id 独立存储，clearSavedState 不会清除它
+    localStorage.setItem(SESSION_KEY, state.butlerSessionId)
     cancelled = false
     // 保存用户最初输入的创作方向（与后续选题结果区分）
     state.originalSetting = setting
@@ -264,6 +273,7 @@ export function useNovelButler(
     stopAllPolls()
     state.active = false
     clearSavedState()
+    localStorage.removeItem(SESSION_KEY)
   }
 
   /** 执行指定步骤 */
@@ -930,6 +940,15 @@ export function useNovelButler(
     stepState.result = '已跳过内容填充，可在小说工坊中手动生成'
   }
 
+  /** 跳过开篇打磨 */
+  function skipOpeningPolish() {
+    const stepState = state.steps.opening_polish
+    stepState.status = 'confirmed'
+    stepState.result = '已跳过开篇打磨'
+    state.openingProgress.phase = 'done'
+    runStep('knowledge')
+  }
+
   /** 重试当前步骤 */
   function retryCurrentStep() {
     const step = state.currentStep
@@ -937,6 +956,280 @@ export function useNovelButler(
     stepState.status = 'idle'
     stepState.error = null
     stepState.options = []
+  }
+
+  /**
+   * 从 ai_task 表恢复管家状态（localStorage 丢失时的兜底）
+   * 支持两种查询方式：
+   *   1. 传入 novelId → 通过 novel_id 查 ai_task（从列表页恢复已有小说）
+   *   2. 不传 novelId → 通过 localStorage 中的 butler_session_id 查（页面刷新恢复）
+   *
+   * 恢复策略：
+   * - 从后往前推断：如果步骤2有数据，说明步骤1一定已确认
+   * - currentStep 定位到最远已完成步骤的下一步
+   * - 步骤1：若后续步骤已有数据则直接 confirmed（用户已选过），否则 choosing
+   */
+  async function restoreFromAITasks(novelId?: number): Promise<boolean> {
+    try {
+      const sessionId = localStorage.getItem(SESSION_KEY)
+      // 两种查询条件都没有，无法恢复
+      if (!sessionId && !novelId) return false
+
+      // 查询管家相关任务（兼容新旧两种 task_type）
+      const taskTypes = [
+        'butler_generate_topic',
+        'butler_storyline_draft', 'butler_storyline_review',
+        'butler_characters_draft', 'butler_characters_review',
+        'butler_generate_storyline', 'butler_generate_characters',
+      ].join(',')
+
+      const queryParams: any = {
+        portfolio_id: portfolioId(),
+        task_types: taskTypes,
+        page: 1,
+        page_size: 100,
+      }
+      if (novelId) {
+        queryParams.novel_id = novelId
+      } else {
+        queryParams.butler_session_id = sessionId
+      }
+
+      const data: any = await aiApi.listTasks(queryParams)
+
+      const tasks: any[] = data.tasks || []
+      if (tasks.length === 0) return false
+
+      // 从任务中提取 butler_session_id（用于后续步骤继续创作）
+      const recoveredSessionId = sessionId || tasks.find((t: any) => t.butler_session_id)?.butler_session_id || ''
+
+      // 按 task_type 分组，取每种类型中最新的 completed 任务
+      const completedByType = new Map<string, any>()
+      for (const t of tasks) {
+        if (t.status !== 'completed') continue
+        const existing = completedByType.get(t.task_type)
+        if (!existing || new Date(t.created_at) > new Date(existing.created_at)) {
+          completedByType.set(t.task_type, t)
+        }
+      }
+
+      // 提取各步骤的恢复数据（兼容新旧 task_type）
+      const topicTasks = tasks.filter(
+        (t: any) => t.task_type === 'butler_generate_topic' && t.status === 'completed'
+      )
+      const storylineResult = extractTaskResultText(
+        completedByType.get('butler_storyline_draft')?.result
+        || completedByType.get('butler_generate_storyline')?.result
+        || completedByType.get('butler_storyline_review')?.result
+        || ''
+      )
+      const charsResult = extractTaskResultText(
+        completedByType.get('butler_characters_draft')?.result
+        || completedByType.get('butler_generate_characters')?.result
+        || completedByType.get('butler_characters_review')?.result
+        || ''
+      )
+
+      // 重置状态
+      Object.assign(state, createButlerState())
+      state.active = true
+      state.butlerSessionId = recoveredSessionId
+      state.createdNovelId = novelId || null
+      cancelled = false
+
+      // 将恢复的 session_id 存入 localStorage，后续步骤可继续使用
+      if (recoveredSessionId) {
+        localStorage.setItem(SESSION_KEY, recoveredSessionId)
+      }
+
+      // 从后往前确定最远已完成步骤，同时恢复数据
+      // 步骤3（人物设计）
+      if (charsResult) {
+        state.steps.characters.status = 'confirmed'
+        state.steps.characters.result = charsResult
+      }
+      // 步骤2（故事线）
+      if (storylineResult) {
+        state.steps.storyline.status = 'confirmed'
+        state.steps.storyline.result = storylineResult
+      }
+      // 步骤1（选题）
+      if (topicTasks.length > 0) {
+        topicTasks.sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+        const options: string[] = []
+        for (const t of topicTasks) {
+          if (t.result) options.push(extractTaskResultText(t.result))
+        }
+        state.steps.topic.options = options
+
+        if (storylineResult) {
+          // 步骤2已有数据，说明步骤1一定已确认过，直接标记 confirmed
+          state.steps.topic.status = 'confirmed'
+          state.steps.topic.result = options[0] || ''
+        } else if (options.length > 0) {
+          // 步骤2还没数据，步骤1回到 choosing 让用户重新选
+          state.steps.topic.status = 'choosing'
+        }
+      }
+
+      // 定位 currentStep：找到第一个未 confirmed 的步骤
+      const restorableSteps: ButlerStep[] = ['topic', 'storyline', 'characters', 'chapters']
+      let nextStep: ButlerStep = 'topic'
+      for (const step of restorableSteps) {
+        if (state.steps[step].status !== 'confirmed') {
+          nextStep = step
+          break
+        }
+        if (step === 'characters') {
+          nextStep = 'chapters'
+        }
+      }
+      state.currentStep = nextStep
+
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  /**
+   * 内部方法：从 ai_task 表补充恢复步骤1-3缺失的数据（不重置 state）
+   */
+  async function _fillFromAITasks(novelId: number) {
+    try {
+      const taskTypes = [
+        'butler_generate_topic',
+        'butler_storyline_draft', 'butler_storyline_review',
+        'butler_characters_draft', 'butler_characters_review',
+        'butler_generate_storyline', 'butler_generate_characters',
+      ].join(',')
+
+      // 第一次：通过 novel_id 查
+      const data: any = await aiApi.listTasks({
+        portfolio_id: portfolioId(),
+        novel_id: novelId,
+        task_types: taskTypes,
+        page: 1,
+        page_size: 100,
+      })
+
+      let tasks: any[] = data.tasks || []
+
+      _applyTasksToState(tasks)
+
+      // 如果 storyline 或 characters 仍然缺失，扩大范围查同 portfolio 下所有管家任务
+      if (state.steps.storyline.status !== 'confirmed' || state.steps.characters.status !== 'confirmed') {
+        const data2: any = await aiApi.listTasks({
+          portfolio_id: portfolioId(),
+          task_types: taskTypes,
+          page: 1,
+          page_size: 200,
+        })
+        const allTasks: any[] = data2.tasks || []
+        _applyTasksToState(allTasks)
+      }
+    } catch {
+      // 补充失败不影响主流程
+    }
+  }
+
+  /** 从 AI 任务的 result 字段中提取纯文本（处理嵌套 JSON） */
+  function extractTaskResultText(raw: string | undefined): string {
+    if (!raw) return ''
+    // 如果不是 JSON，直接返回
+    if (!raw.startsWith('{')) return raw
+    try {
+      const obj = JSON.parse(raw)
+      // 直接是 review 结果：{"score":..., "revised_content":"..."}
+      if (obj.revised_content && typeof obj.revised_content === 'string') {
+        return obj.revised_content
+      }
+      // executor 返回格式：{"content": "..."} 或 {"summary": "..."}
+      const text = obj.content || obj.summary || obj.text || ''
+      if (typeof text !== 'string') return raw
+      // content 本身可能还是 JSON（review 的原始输出），尝试提取 revised_content
+      if (text.startsWith('{')) {
+        try {
+          const inner = JSON.parse(text)
+          return inner.revised_content || inner.content || text
+        } catch { return text }
+      }
+      return text
+    } catch { return raw }
+  }
+
+  /** 从任务列表中提取数据填充 state（只补充缺失的步骤） */
+  function _applyTasksToState(tasks: any[]) {
+    if (tasks.length === 0) return
+
+    // 恢复 butler_session_id
+    if (!state.butlerSessionId) {
+      const sessionId = tasks.find((t: any) => t.butler_session_id)?.butler_session_id
+      if (sessionId) {
+        state.butlerSessionId = sessionId
+        localStorage.setItem(SESSION_KEY, sessionId)
+      }
+    }
+
+    // 按 task_type 分组，取每种类型中最新的 completed 任务
+    const completedByType = new Map<string, any>()
+    for (const t of tasks) {
+      if (t.status !== 'completed') continue
+      const existing = completedByType.get(t.task_type)
+      if (!existing || new Date(t.created_at) > new Date(existing.created_at)) {
+        completedByType.set(t.task_type, t)
+      }
+    }
+
+    // 步骤1（选题）：只在当前未 confirmed 时补充
+    if (state.steps.topic.status !== 'confirmed') {
+      const topicTasks = tasks.filter(
+        (t: any) => t.task_type === 'butler_generate_topic' && t.status === 'completed'
+      )
+      if (topicTasks.length > 0) {
+        topicTasks.sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+        const options: string[] = []
+        for (const t of topicTasks) {
+          if (t.result) options.push(extractTaskResultText(t.result))
+        }
+        state.steps.topic.options = options
+        // 如果步骤2有数据，说明步骤1已确认过
+        const hasStoryline = completedByType.has('butler_storyline_draft') || completedByType.has('butler_storyline_review')
+          || completedByType.has('butler_generate_storyline')
+        if (hasStoryline) {
+          state.steps.topic.status = 'confirmed'
+          state.steps.topic.result = options[0] || ''
+        } else if (options.length > 0) {
+          state.steps.topic.status = 'choosing'
+        }
+      }
+    }
+
+    // 步骤2（故事线）：只在当前未 confirmed 时补充
+    if (state.steps.storyline.status !== 'confirmed') {
+      // 优先 draft（纯文本），review 的 result 是嵌套 JSON 不适合直接展示
+      const rawResult = completedByType.get('butler_storyline_draft')?.result
+        || completedByType.get('butler_generate_storyline')?.result
+        || completedByType.get('butler_storyline_review')?.result
+      const result = extractTaskResultText(rawResult)
+      if (result) {
+        state.steps.storyline.status = 'confirmed'
+        state.steps.storyline.result = result
+      }
+    }
+
+    // 步骤3（人物设计）：只在当前未 confirmed 时补充
+    if (state.steps.characters.status !== 'confirmed') {
+      // 优先 draft（纯文本），review 的 result 是嵌套 JSON 不适合直接展示
+      const rawResult = completedByType.get('butler_characters_draft')?.result
+        || completedByType.get('butler_generate_characters')?.result
+        || completedByType.get('butler_characters_review')?.result
+      const result = extractTaskResultText(rawResult)
+      if (result) {
+        state.steps.characters.status = 'confirmed'
+        state.steps.characters.result = result
+      }
+    }
   }
 
   /**
@@ -962,14 +1255,27 @@ export function useNovelButler(
         { step: 'characters', field: 'butler_characters' },
       ]
 
-      let firstIncomplete: ButlerStep | null = null
-
       for (const { step, field } of stepFieldMap) {
         const value = novel[field]
         if (value) {
           state.steps[step].status = 'confirmed'
-          state.steps[step].result = value
-        } else if (!firstIncomplete) {
+          // 兼容：字段可能存了 JSON 格式，提取纯文本
+          state.steps[step].result = extractTaskResultText(value)
+        }
+      }
+
+      // 如果步骤1-3有缺失，从 ai_task 表补充恢复
+      const hasIncompleteEarlySteps = stepFieldMap.some(
+        ({ step }) => state.steps[step].status !== 'confirmed'
+      )
+      if (hasIncompleteEarlySteps) {
+        await _fillFromAITasks(novelId)
+      }
+
+      // 重新计算 firstIncomplete
+      let firstIncomplete: ButlerStep | null = null
+      for (const { step } of stepFieldMap) {
+        if (state.steps[step].status !== 'confirmed' && !firstIncomplete) {
           firstIncomplete = step
         }
       }
@@ -1063,6 +1369,7 @@ export function useNovelButler(
     isAllDone,
     startButler,
     closeButler,
+    stopAllPolls,
     runStep,
     submitStepHint,
     confirmStep,
@@ -1071,10 +1378,12 @@ export function useNovelButler(
     runIterativeStep,
     confirmChapters,
     skipContent,
+    skipOpeningPolish,
     retryCurrentStep,
     saveState,
     restoreState,
     clearSavedState,
     restoreFromTasks,
+    restoreFromAITasks,
   }
 }

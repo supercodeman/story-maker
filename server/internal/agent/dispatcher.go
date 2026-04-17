@@ -112,6 +112,8 @@ func (d *Dispatcher) registerDefaultExecutors() {
 	d.executorRegistry.Register(model.TaskTypeButlerStorylineReview, outlineChapter)
 	d.executorRegistry.Register(model.TaskTypeButlerCharactersDraft, outlineChapter)
 	d.executorRegistry.Register(model.TaskTypeButlerCharactersReview, outlineChapter)
+	d.executorRegistry.Register(model.TaskTypeButlerOpeningDraft, outlineChapter)
+	d.executorRegistry.Register(model.TaskTypeButlerOpeningReview, outlineChapter)
 
 	d.executorRegistry.Register(model.TaskTypeKnowledgeExtract, text)
 	d.executorRegistry.Register(model.TaskTypeOverviewExtract, text)

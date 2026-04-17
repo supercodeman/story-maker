@@ -53,7 +53,7 @@ export const aiApi = {
   adjustCharacter: (data: CharacterAdjustRequest) =>
     request.post('/ai/character/adjust', data),
   getTask: (taskId: number) => request.get(`/ai/tasks/${taskId}`),
-  listTasks: (params?: { portfolio_id?: number; page?: number; page_size?: number; task_types?: string }) =>
+  listTasks: (params?: { portfolio_id?: number; page?: number; page_size?: number; task_types?: string; butler_session_id?: string; novel_id?: number }) =>
     request.get('/ai/tasks', { params }),
   cancelTask: (taskId: number) => request.delete(`/ai/tasks/${taskId}`),
 }

@@ -130,7 +130,7 @@ func (s *AIService) GetTask(ctx context.Context, taskID, userID uint) (*model.AI
 }
 
 // ListTasks 获取任务列表
-func (s *AIService) ListTasks(ctx context.Context, userID uint, portfolioID *uint, page, pageSize int, taskTypes []string) ([]*model.AITask, int64, error) {
+func (s *AIService) ListTasks(ctx context.Context, userID uint, portfolioID *uint, page, pageSize int, taskTypes []string, butlerSessionID string, novelID uint) ([]*model.AITask, int64, error) {
 	if page <= 0 {
 		page = 1
 	}
@@ -141,7 +141,7 @@ func (s *AIService) ListTasks(ctx context.Context, userID uint, portfolioID *uin
 	offset := (page - 1) * pageSize
 
 	if portfolioID != nil {
-		return s.taskDAO.ListTasksByPortfolio(ctx, *portfolioID, pageSize, offset, taskTypes)
+		return s.taskDAO.ListTasksByPortfolio(ctx, *portfolioID, pageSize, offset, taskTypes, butlerSessionID, novelID)
 	}
 
 	return s.taskDAO.ListTasksByUser(ctx, userID, pageSize, offset)
