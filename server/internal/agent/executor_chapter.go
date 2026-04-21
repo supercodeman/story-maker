@@ -36,7 +36,7 @@ func (e *ChapterTaskExecutor) Execute(ctx context.Context, ec *ExecContext) (int
 		case model.TaskTypeChapterPolish:
 			systemPrompt = "你是一位专业的文学编辑。基于章节概要对内容进行润色，提升文学性和可读性，保持原有情节不变。直接输出润色后的正文。"
 		case model.TaskTypeChapterExpand:
-			systemPrompt = "你是一位专业的小说作家。严格按照章节概要进行扩写，丰富细节描写和对话，不要偏离概要设定的情节方向。扩写后正文不少于3000字，这是硬性要求。直接输出扩写后的完整正文。"
+			systemPrompt = "你是一位专业的小说作家。在原文基础上进行增量扩写，保留原有情节和对话不变，通过补充细节、扩展对话、丰富描写来增加字数。直接输出扩写后的完整正文。"
 		case model.TaskTypeChapterContinue:
 			systemPrompt = "你是一位专业的小说作家。严格按照章节概要续写后续情节，不要偏离概要设定的情节方向。直接输出续写的内容。"
 		}

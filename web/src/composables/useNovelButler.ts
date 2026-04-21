@@ -10,15 +10,15 @@ import { useWorkflowStore } from '@/store/workflow'
 // 步骤定义
 export type ButlerStep = 'topic' | 'storyline' | 'characters' | 'chapters' | 'opening_polish' | 'knowledge' | 'content'
 
-const STEPS: ButlerStep[] = ['topic', 'storyline', 'characters', 'chapters', 'opening_polish', 'knowledge', 'content']
+const STEPS: ButlerStep[] = ['topic', 'storyline', 'characters', 'chapters', 'knowledge', 'opening_polish', 'content']
 
 const STEP_LABELS: Record<ButlerStep, string> = {
   topic: '选题',
   storyline: '故事线',
   characters: '人物设计',
   chapters: '章节生成',
-  opening_polish: '开篇打磨',
   knowledge: '知识图谱',
+  opening_polish: '开篇打磨',
   content: '内容填充',
 }
 
@@ -293,10 +293,20 @@ export function useNovelButler(
       return
     }
     if (step === 'opening_polish') {
+      if (!state.autoMode) {
+        stepState.status = 'idle'
+        stepState.error = null
+        return
+      }
       await runOpeningPolishStep()
       return
     }
     if (step === 'knowledge') {
+      if (!state.autoMode) {
+        stepState.status = 'idle'
+        stepState.error = null
+        return
+      }
       await runKnowledgeStep()
       return
     }
@@ -332,6 +342,10 @@ export function useNovelButler(
     }
     if (step === 'knowledge') {
       runKnowledgeStep()
+      return
+    }
+    if (step === 'opening_polish') {
+      runOpeningPolishStep()
       return
     }
     if (step === 'content') {
@@ -663,8 +677,8 @@ export function useNovelButler(
       stepState.status = 'confirmed'
       stepState.result = `已创建小说「${title}」，共 ${state.outlineChapters.length} 章`
 
-      // 推进到开篇打磨步骤
-      runStep('opening_polish')
+      // 推进到知识图谱步骤（先提取知识，再打磨开篇）
+      runStep('knowledge')
     } catch (e: any) {
       stepState.error = e.message || '创建小说失败'
     }
@@ -682,7 +696,7 @@ export function useNovelButler(
     if (first5.length === 0) {
       stepState.status = 'confirmed'
       stepState.result = '无章节数据，跳过开篇打磨'
-      runStep('knowledge')
+      runStep('content')
       return
     }
 
@@ -739,6 +753,20 @@ export function useNovelButler(
                       state.outlineChapters[idx].summary = enhanced.enhanced_summary
                     }
                   }
+                  // 回写精细化概要到数据库
+                  if (state.createdNovelId) {
+                    await novelStore.fetchChapters(state.createdNovelId)
+                    for (const enhanced of state.openingChapters) {
+                      const idx = (enhanced.chapter_index || 1) - 1
+                      const ch = novelStore.chapters[idx]
+                      if (ch && enhanced.enhanced_summary) {
+                        await novelStore.updateChapter(ch.id, {
+                          title: enhanced.title || ch.title,
+                          summary: enhanced.enhanced_summary,
+                        })
+                      }
+                    }
+                  }
                 } catch { /* JSON 解析失败忽略 */ }
               }
               state.openingProgress.phase = 'generating'
@@ -769,12 +797,16 @@ export function useNovelButler(
               'opening_chapter',
               selectedModel(),
               {
+                title: chapter.title,
+                background: chapter.summary || '',
                 chapter_id: chapter.id,
                 novel_id: state.createdNovelId,
                 chapter_sort_order: chapter.sort_order,
               },
             )
             await waitForWorkflow()
+            // 从工作流结果中提取 content 并保存到章节
+            await saveWorkflowResultToChapter(chapter.id)
           } catch {
             // 单章失败不中断
           }
@@ -785,8 +817,8 @@ export function useNovelButler(
       stepState.status = 'confirmed'
       stepState.result = `前${Math.min(5, first5.length)}章开篇打磨完成`
 
-      // 推进到知识图谱
-      runStep('knowledge')
+      // 推进到内容填充
+      runStep('content')
     } catch (e: any) {
       if (e?.message === 'cancelled') return
       stepState.status = 'idle'
@@ -804,7 +836,7 @@ export function useNovelButler(
     if (!state.createdNovelId) {
       stepState.status = 'confirmed'
       stepState.result = '跳过知识提取（无小说 ID）'
-      runStep('content')
+      runStep('opening_polish')
       return
     }
 
@@ -828,19 +860,19 @@ export function useNovelButler(
             stepState.result = '知识图谱已生成（人物、情节线、伏笔、关系）'
           } catch {
             stepState.status = 'confirmed'
-            stepState.result = '知识解析失败，继续生成内容'
+            stepState.result = '知识解析失败，继续开篇打磨'
           }
-          runStep('content')
+          runStep('opening_polish')
         } else {
           stepState.status = 'confirmed'
-          stepState.result = '知识提取失败，继续生成内容'
-          runStep('content')
+          stepState.result = '知识提取失败，继续开篇打磨'
+          runStep('opening_polish')
         }
       })
     } catch {
       stepState.status = 'confirmed'
-      stepState.result = '知识提取请求失败，继续生成内容'
-      runStep('content')
+      stepState.result = '知识提取请求失败，继续开篇打磨'
+      runStep('opening_polish')
     }
   }
 
@@ -886,6 +918,8 @@ export function useNovelButler(
             'full_chapter',
             selectedModel(),
             {
+              title: chapter.title,
+              background: chapter.summary || '',
               chapter_id: chapter.id,
               novel_id: state.createdNovelId,
               chapter_sort_order: chapter.sort_order,
@@ -894,6 +928,7 @@ export function useNovelButler(
 
           // 等待工作流完成
           await waitForWorkflow()
+          await saveWorkflowResultToChapter(chapter.id)
           state.contentProgress.completed++
         } catch {
           state.contentProgress.completed++
@@ -933,6 +968,21 @@ export function useNovelButler(
     })
   }
 
+  /** 从工作流结果中提取 content 并保存到章节 */
+  async function saveWorkflowResultToChapter(chapterId: number) {
+    try {
+      const wf = workflowStore.currentWorkflow
+      if (!wf?.result_json) return
+      const result = JSON.parse(wf.result_json)
+      const finalResult = result.final_result
+      const content = typeof finalResult === 'string' ? finalResult : finalResult?.content
+      if (content) {
+        await novelStore.updateChapter(chapterId, { content })
+      }
+    } catch { /* 解析或保存失败忽略 */ }
+    workflowStore.reset()
+  }
+
   /** 跳过内容填充 */
   function skipContent() {
     const stepState = state.steps.content
@@ -946,7 +996,7 @@ export function useNovelButler(
     stepState.status = 'confirmed'
     stepState.result = '已跳过开篇打磨'
     state.openingProgress.phase = 'done'
-    runStep('knowledge')
+    runStep('content')
   }
 
   /** 重试当前步骤 */
@@ -1291,27 +1341,7 @@ export function useNovelButler(
         }
       }
 
-      // 步骤 5（开篇打磨）：检查前5章是否已有内容（有内容说明开篇打磨已完成）
-      if (!firstIncomplete) {
-        try {
-          await novelStore.fetchChapters(novelId)
-          const chapters = novelStore.chapters
-          const first5WithContent = chapters.slice(0, 5).filter((ch: any) => ch.content && ch.content.trim())
-          if (first5WithContent.length >= Math.min(5, chapters.length)) {
-            state.steps.opening_polish.status = 'confirmed'
-            state.steps.opening_polish.result = '前5章开篇打磨已完成'
-            state.openingProgress.phase = 'done'
-          } else {
-            firstIncomplete = 'opening_polish'
-          }
-        } catch {
-          // 查询失败，标记为已完成跳过
-          state.steps.opening_polish.status = 'confirmed'
-          state.steps.opening_polish.result = '开篇打磨状态未知'
-        }
-      }
-
-      // 步骤 6（知识图谱）：查 AI 任务确认是否已提取
+      // 步骤 5（知识图谱）：查 AI 任务确认是否已提取
       if (!firstIncomplete) {
         try {
           const data: any = await aiApi.listTasks({
@@ -1335,7 +1365,27 @@ export function useNovelButler(
         }
       }
 
-      // 步骤 6（内容填充）：检查章节是否有内容
+      // 步骤 6（开篇打磨）：检查前5章是否已有内容（有内容说明开篇打磨已完成）
+      if (!firstIncomplete) {
+        try {
+          await novelStore.fetchChapters(novelId)
+          const chapters = novelStore.chapters
+          const first5WithContent = chapters.slice(0, 5).filter((ch: any) => ch.content && ch.content.trim())
+          if (first5WithContent.length >= Math.min(5, chapters.length)) {
+            state.steps.opening_polish.status = 'confirmed'
+            state.steps.opening_polish.result = '前5章开篇打磨已完成'
+            state.openingProgress.phase = 'done'
+          } else {
+            firstIncomplete = 'opening_polish'
+          }
+        } catch {
+          // 查询失败，标记为已完成跳过
+          state.steps.opening_polish.status = 'confirmed'
+          state.steps.opening_polish.result = '开篇打磨状态未知'
+        }
+      }
+
+      // 步骤 7（内容填充）：检查章节是否有内容
       if (!firstIncomplete) {
         try {
           await novelStore.fetchChapters(novelId)

@@ -236,6 +236,8 @@ func defaultTemplates() []model.PromptTemplate {
 4. 优化句式节奏，减少连续相同句式
 5. 保持原有情节走向、人物关系和作者文风不变
 6. 行为处事方式要贴合世界观设定
+
+直接输出润色后的完整正文，禁止输出任何润色说明、修改要点、改动解释。
 {{- end}}
 {{- if .PolishModeInstruction}}
 
@@ -247,7 +249,7 @@ func defaultTemplates() []model.PromptTemplate {
 		{
 			Action: "expand", PromptType: "system",
 			Name: "章节扩写-系统提示",
-			Content: `你是一位专业的小说作家。严格按照章节概要进行扩写，丰富细节描写和对话，不要偏离概要设定的情节方向。扩写后正文不少于3000字，这是硬性要求。直接输出扩写后的完整正文。{{if .WritingStyle}}
+			Content: `你是一位专业的小说作家。在原文基础上进行增量扩写，保留原有情节和对话不变，通过补充细节、扩展对话、丰富描写来增加字数。直接输出扩写后的完整正文。{{if .WritingStyle}}
 
 【写作规范】
 {{.WritingStyle}}{{end}}{{if .ReviewContext}}
@@ -291,7 +293,12 @@ func defaultTemplates() []model.PromptTemplate {
 【当前内容（{{.WordCount}}字）】
 {{.ChapterContent}}
 
-请严格按照章节概要进行扩写，目标 {{.TargetWords}} 字，正文不少于3000字（硬性要求）。丰富场景描写和人物对话，确保与前文情节衔接自然，不要偏离概要设定的情节方向。
+请在保留原文所有情节和对话的基础上进行扩写，将内容从{{.WordCount}}字扩充到{{.TargetWords}}字以上。扩写方法：
+1. 为每个场景补充感官细节（视觉、听觉、触觉），让画面更立体
+2. 扩展关键对话，增加角色的微表情、动作和心理活动
+3. 在场景转换处补充过渡段落，增强叙事连贯性
+4. 丰富环境描写和氛围渲染
+不要删减或改写原有内容，只做增量扩充。确保与前文情节衔接自然。
 {{- end}}`,
 		},
 		// continue

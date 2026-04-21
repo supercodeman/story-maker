@@ -512,11 +512,41 @@
         </div>
       </template>
 
-      <!-- 步骤 5：开篇打磨 -->
-      <template v-else-if="state.currentStep === 'opening_polish'">
+      <!-- 步骤 5：知识图谱 -->
+      <template v-else-if="state.currentStep === 'knowledge'">
         <div class="step-section">
           <div class="step-header">
             <div class="step-header__badge">5</div>
+            <div class="step-header__title">知识图谱</div>
+          </div>
+
+          <div v-if="state.steps.knowledge.status === 'idle'" class="step-idle-action">
+            <p style="color: #666; margin-bottom: 16px;">从故事线、人物设计和章节概要中提取知识图谱，供后续内容生成参考。</p>
+            <button class="action-btn action-btn--primary" @click="submitStepHint('knowledge')">
+              开始提取
+            </button>
+          </div>
+
+          <div v-else-if="state.steps.knowledge.status === 'generating'" class="content-progress">
+            <div class="progress-info">
+              {{ state.knowledgeProgress.phase === 'extracting' ? '正在从章节概要中提取知识图谱...' : '正在解析并保存知识数据...' }}
+            </div>
+            <div class="progress-sub">自动提取人物档案、情节线、伏笔追踪、人物关系</div>
+            <el-progress :percentage="state.knowledgeProgress.phase === 'parsing' ? 80 : 40" :stroke-width="8" :show-text="false" />
+          </div>
+
+          <div v-else-if="state.steps.knowledge.status === 'confirmed'" class="confirmed-summary">
+            <div class="confirmed-badge">✓ 已完成</div>
+            <div class="confirmed-text">{{ state.steps.knowledge.result }}</div>
+          </div>
+        </div>
+      </template>
+
+      <!-- 步骤 6：开篇打磨 -->
+      <template v-else-if="state.currentStep === 'opening_polish'">
+        <div class="step-section">
+          <div class="step-header">
+            <div class="step-header__badge">6</div>
             <div class="step-header__title">开篇打磨</div>
             <div class="step-header__status" :class="`step-header__status--${state.steps.opening_polish.status}`">{{ stepStatusText }}</div>
           </div>
@@ -524,7 +554,7 @@
           <!-- idle：等待用户触发 -->
           <div v-if="state.steps.opening_polish.status === 'idle'" class="step-idle-action">
             <p style="color: #666; margin-bottom: 16px;">对前5章概要进行精细化打磨，并生成开篇正文内容。</p>
-            <button class="action-btn action-btn--primary" @click="runStep('opening_polish')">
+            <button class="action-btn action-btn--primary" @click="submitStepHint('opening_polish')">
               开始打磨
             </button>
             <button class="action-btn action-btn--secondary" style="margin-left: 10px;" @click="skipOpeningPolish">
@@ -587,29 +617,6 @@
             <button class="action-btn action-btn--primary" style="margin-top: 10px;" @click="retryCurrentStep">
               重试
             </button>
-          </div>
-        </div>
-      </template>
-
-      <!-- 步骤 6：知识图谱 -->
-      <template v-else-if="state.currentStep === 'knowledge'">
-        <div class="step-section">
-          <div class="step-header">
-            <div class="step-header__badge">6</div>
-            <div class="step-header__title">知识图谱</div>
-          </div>
-
-          <div v-if="state.steps.knowledge.status === 'generating'" class="content-progress">
-            <div class="progress-info">
-              {{ state.knowledgeProgress.phase === 'extracting' ? '正在从章节概要中提取知识图谱...' : '正在解析并保存知识数据...' }}
-            </div>
-            <div class="progress-sub">自动提取人物档案、情节线、伏笔追踪、人物关系</div>
-            <el-progress :percentage="state.knowledgeProgress.phase === 'parsing' ? 80 : 40" :stroke-width="8" :show-text="false" />
-          </div>
-
-          <div v-else-if="state.steps.knowledge.status === 'confirmed'" class="confirmed-summary">
-            <div class="confirmed-badge">✓ 已完成</div>
-            <div class="confirmed-text">{{ state.steps.knowledge.result }}</div>
           </div>
         </div>
       </template>

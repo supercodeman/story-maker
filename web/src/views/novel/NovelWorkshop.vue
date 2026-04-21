@@ -1176,6 +1176,7 @@ async function handleSummaryAccept() {
     await novelStore.updateChapter(novelStore.currentChapter.id, {
       title: editTitle.value,
       summary: editSummary.value,
+      content: editContent.value,
     })
     // 清掉概要部分，保留正文对比（如果有）
     novelStore.aiSummary = null

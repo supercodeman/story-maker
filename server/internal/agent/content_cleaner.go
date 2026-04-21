@@ -13,12 +13,25 @@ func CleanNovelContent(content string) string {
 		return content
 	}
 
+	content = removeAIPreamble(content)
 	content = truncateAtSeparator(content)
 	content = removeTailBracketBlocks(content)
 	content = removeTailNoteLines(content)
 	content = removeHeadMetaLines(content)
 
 	return strings.TrimSpace(content)
+}
+
+// removeAIPreamble 移除 AI 输出的前导说明和尾部说明
+// 如 "以下是润色后的正文：" "润色说明：" "修改要点：" "扩写说明：" 等
+func removeAIPreamble(content string) string {
+	// 移除开头的引导语（"以下是..." "好的，..." 等）
+	headRe := regexp.MustCompile(`^(?:\s*(?:以下是|好的[，,]|下面是|这是)[^\n]*(?:：|:)\s*\n)+`)
+	content = headRe.ReplaceAllString(content, "")
+	// 移除尾部的说明段落
+	tailRe := regexp.MustCompile(`(?s)\n\s*(?:润色说明|修改要点|扩写说明|改动说明|修改说明|主要改动|主要修改)[：:][^\n]*(\n[\s\S]*)?$`)
+	content = tailRe.ReplaceAllString(content, "")
+	return content
 }
 
 // truncateAtSeparator 遇到独占一行的分隔线（---、===、***），截取之前的内容

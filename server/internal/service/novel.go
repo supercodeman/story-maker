@@ -408,14 +408,19 @@ func (s *NovelService) UpdateChapter(userID, chapterID uint, req *UpdateChapterR
 	oldWordCount := chapter.WordCount
 
 	// 检测内容是否有变化
-	contentChanged := req.Content != chapter.Content || req.Summary != chapter.Summary
+	contentChanged := (req.Content != "" && req.Content != chapter.Content) || req.Summary != chapter.Summary
 
 	if req.Title != "" {
 		chapter.Title = req.Title
 	}
-	chapter.Summary = req.Summary
-	chapter.Content = req.Content
-	chapter.WordCount = utf8.RuneCountInString(req.Content)
+	if req.Summary != "" || req.Content != "" {
+		// 只在有明确传值时覆盖，避免部分更新时误清空
+		if req.Content != "" {
+			chapter.Content = req.Content
+			chapter.WordCount = utf8.RuneCountInString(req.Content)
+		}
+		chapter.Summary = req.Summary
+	}
 
 	// 内容变化时创建版本记录
 	if contentChanged {
@@ -423,8 +428,8 @@ func (s *NovelService) UpdateChapter(userID, chapterID uint, req *UpdateChapterR
 		version := &model.ChapterVersion{
 			ChapterID: chapterID,
 			Version:   chapter.CurrentVersion,
-			Content:   req.Content,
-			Summary:   req.Summary,
+			Content:   chapter.Content,
+			Summary:   chapter.Summary,
 			Source:    model.VersionSourceManual,
 			WordCount: chapter.WordCount,
 		}
@@ -868,9 +873,9 @@ func (s *NovelService) buildTemplateData(novel *model.Novel, chapter *model.Chap
 	}
 
 	wordCount := utf8.RuneCountInString(chapter.Content)
-	targetWords := wordCount * 2
-	if targetWords < 3000 {
-		targetWords = 3000
+	targetWords := 3000
+	if wordCount >= 3000 {
+		targetWords = wordCount + 1000
 	}
 
 	// 注入知识库上下文（RAG Phase 1 — 按 Knowledge 预算截断）
@@ -1069,16 +1074,16 @@ func (s *NovelService) buildUserPrompt(action string, novel *model.Novel, chapte
 			contextHeader, chapter.Title, chapter.Summary, chapter.Content)
 	case "expand":
 		wordCount := utf8.RuneCountInString(chapter.Content)
-		targetWords := wordCount * 2
-		if targetWords < 3000 {
-			targetWords = 3000
+		targetWords := 3000
+		if wordCount >= 3000 {
+			targetWords = wordCount + 1000
 		}
 		if selectedText != "" {
 			return fmt.Sprintf("%s\n\n【当前章节】%s\n【章节概要】%s\n【选中片段】\n%s\n\n请仅对以上选中片段进行扩写，丰富细节描写和对话，保持上下文语境一致。只输出替换后的片段文本，不要输出完整章节。",
 				contextHeader, chapter.Title, chapter.Summary, selectedText)
 		}
-		return fmt.Sprintf("%s\n\n【当前章节】%s\n【章节概要】%s\n【当前内容（%d字）】\n%s\n\n请严格按照章节概要进行扩写，目标 %d 字，正文不少于3000字（硬性要求）。丰富场景描写和人物对话，确保与前文情节衔接自然，不要偏离概要设定的情节方向。",
-			contextHeader, chapter.Title, chapter.Summary, wordCount, chapter.Content, targetWords)
+		return fmt.Sprintf("%s\n\n【当前章节】%s\n【章节概要】%s\n【当前内容（%d字）】\n%s\n\n请在保留原文所有情节和对话的基础上进行扩写，将内容从%d字扩充到%d字以上。扩写方法：\n1. 为每个场景补充感官细节（视觉、听觉、触觉）\n2. 扩展关键对话，增加角色的微表情、动作和心理活动\n3. 在场景转换处补充过渡段落\n4. 丰富环境描写和氛围渲染\n不要删减或改写原有内容，只做增量扩充。",
+			contextHeader, chapter.Title, chapter.Summary, wordCount, chapter.Content, wordCount, targetWords)
 	case "continue":
 		return fmt.Sprintf("%s\n\n【当前章节】%s\n【章节概要】%s\n【当前章节已有内容】\n%s\n\n请严格按照章节概要续写约 500-1000 字，确保与前文情节自然衔接，不要偏离概要设定的情节方向。",
 			contextHeader, chapter.Title, chapter.Summary, chapter.Content)
