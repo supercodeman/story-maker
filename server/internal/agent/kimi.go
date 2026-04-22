@@ -282,7 +282,7 @@ func (k *KimiProvider) Name() string {
 
 // FallbackModels 返回同 Provider 内的降级模型列表
 func (k *KimiProvider) FallbackModels() []string {
-	return []string{"moonshot-v1-128k", "moonshot-v1-8k"}
+	return nil // 降级链已由 DB 驱动，不再硬编码
 }
 
 // Capabilities 返回 Kimi 支持的能力列表

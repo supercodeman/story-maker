@@ -31,6 +31,7 @@
             <span class="col col--cap">能力</span>
             <span class="col col--status">状态</span>
             <span class="col col--latency">延迟</span>
+            <span class="col col--priority">优先级</span>
             <span class="col col--time">最后检查</span>
             <span class="col col--error">错误信息</span>
             <span class="col col--actions">操作</span>
@@ -46,6 +47,17 @@
             </span>
             <span class="col col--latency">
               {{ item.latency_ms > 0 ? item.latency_ms + 'ms' : '-' }}
+            </span>
+            <span class="col col--priority">
+              <el-input-number
+                :model-value="item.priority"
+                :min="0"
+                :max="999"
+                :step="1"
+                size="small"
+                controls-position="right"
+                @change="(val: number) => handlePriorityChange(item, val ?? 0)"
+              />
             </span>
             <span class="col col--time">{{ item.last_check || '未检测' }}</span>
             <span class="col col--error" :title="item.last_error">
@@ -100,7 +112,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getModelStatus, triggerHealthCheck, addModel, deleteModel, testModel } from '@/api/model'
+import { getModelStatus, triggerHealthCheck, addModel, deleteModel, testModel, updateModelPriority } from '@/api/model'
 import type { ModelStatusDetail } from '@/api/model'
 import FadePanel from '@/components/common/FadePanel.vue'
 
@@ -267,6 +279,16 @@ async function handleTestModel(item: ModelStatusDetail) {
     ElMessage.error('测试请求失败')
   } finally {
     testingId.value = null
+  }
+}
+
+async function handlePriorityChange(item: ModelStatusDetail, newVal: number) {
+  try {
+    await updateModelPriority(item.id, newVal)
+    item.priority = newVal
+    ElMessage.success('优先级已更新')
+  } catch {
+    ElMessage.error('更新优先级失败')
   }
 }
 
@@ -447,9 +469,15 @@ onMounted(() => loadStatus())
   &--cap { width: 90px; }
   &--status { width: 80px; display: flex; align-items: center; gap: 6px; }
   &--latency { width: 70px; }
+  &--priority { width: 110px; }
   &--time { width: 150px; }
   &--error { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   &--actions { width: 120px; display: flex; gap: 6px; flex-shrink: 0; }
+}
+
+// 限制优先级输入框宽度
+.col--priority :deep(.el-input-number) {
+  width: 90px;
 }
 
 .dot {

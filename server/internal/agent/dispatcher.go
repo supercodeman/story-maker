@@ -13,6 +13,12 @@ import (
 	"ai-curton/server/internal/model"
 )
 
+// FallbackEntry 降级链条目
+type FallbackEntry struct {
+	Provider  string
+	ModelName string
+}
+
 // TaskResult 任务结果结构
 type TaskResult struct {
 	TaskID uint        `json:"task_id"`
@@ -62,6 +68,8 @@ type ModelChecker interface {
 	IsModelAvailable(provider, capability string) bool
 	// IsSubModelAvailable 检查指定 Provider 下的子模型是否可用
 	IsSubModelAvailable(provider, modelName, capability string) bool
+	// GetFallbackChain 获取指定能力的降级链（从 DB 获取，按优先级排序，排除当前模型）
+	GetFallbackChain(capability, currentProvider, currentModel string) []FallbackEntry
 }
 
 // NewDispatcher 创建 Dispatcher 实例
@@ -568,17 +576,16 @@ func (d *Dispatcher) CancelTask(ctx context.Context, taskID uint) error {
 	return d.taskStore.UpdateTask(ctx, task)
 }
 
-// IsAccountLevelError 判断是否为账号级别错误（配额耗尽、计费问题等）
+// IsAccountLevelError 判断是否为账号级别错误（计费问题、账号封禁等）
 // 此类错误同 Provider 内换模型无意义，应直接跨 Provider 降级
+// 注意：FreeTierOnly / AllocationQuota 是模型级配额限制（同 Key 下不同模型有独立额度），
+// 不属于账号级错误，应允许同 Provider 内降级到其他模型
 func IsAccountLevelError(err error) bool {
 	if err == nil {
 		return false
 	}
 	msg := strings.ToLower(err.Error())
 	patterns := []string{
-		"allocationquota",
-		"freetieronly",
-		"free tier",
 		"billing",
 		"insufficient_quota",
 		"account",
@@ -672,7 +679,7 @@ func taskTypeToCapability(taskType string) string {
 	}
 }
 
-// GenerateTextWithFallback 同步调用 AI 生成文本，自带三层降级
+// GenerateTextWithFallback 同步调用 AI 生成文本，自带降级机制
 // 供 service 层直接调用 AI 的场景使用（如事实采集、知识提取等）
 func (d *Dispatcher) GenerateTextWithFallback(ctx context.Context, preferredModel string, req *TextRequest) (*TextResponse, error) {
 	providerName, modelVersion := ParseModelName(preferredModel)
@@ -687,16 +694,28 @@ func (d *Dispatcher) GenerateTextWithFallback(ctx context.Context, preferredMode
 	}
 	log.Printf("[dispatcher] GenerateTextWithFallback: %s/%s failed (%v), trying fallback", providerName, modelVersion, err)
 
-	// 第二层：同 Provider 内版本降级（账号级错误跳过）
+	// 如果有 modelChecker，使用 DB 驱动的降级链
+	if d.modelChecker != nil {
+		capability := taskTypeToCapability("text_gen")
+		chain := d.modelChecker.GetFallbackChain(capability, providerName, modelVersion)
+		for _, entry := range chain {
+			log.Printf("[dispatcher] GenerateTextWithFallback: fallback to %s/%s", entry.Provider, entry.ModelName)
+			resp, err = d.generateTextAttempt(ctx, entry.Provider, entry.ModelName, req)
+			if err == nil {
+				return resp, nil
+			}
+			if !IsRetryableError(err) {
+				return nil, err
+			}
+		}
+		return nil, fmt.Errorf("all fallback models exhausted: %w", err)
+	}
+
+	// 兜底：无 modelChecker 时使用旧逻辑
 	if !IsAccountLevelError(err) {
 		provider, providerErr := d.GetProvider(providerName)
 		if providerErr == nil {
 			for _, fbModel := range provider.FallbackModels() {
-				// 跳过已知不可用的子模型
-				if d.modelChecker != nil && !d.modelChecker.IsSubModelAvailable(providerName, fbModel, "text_gen") {
-					log.Printf("[dispatcher] GenerateTextWithFallback: skip %s/%s (marked unavailable)", providerName, fbModel)
-					continue
-				}
 				log.Printf("[dispatcher] GenerateTextWithFallback: falling back to %s/%s", providerName, fbModel)
 				resp, err = d.generateTextAttempt(ctx, providerName, fbModel, req)
 				if err == nil {
@@ -712,7 +731,6 @@ func (d *Dispatcher) GenerateTextWithFallback(ctx context.Context, preferredMode
 		}
 	}
 
-	// 第三层：跨 Provider 降级（跳过不可用的）
 	for _, fbProvider := range d.fallbackProviders(providerName, "text_gen") {
 		log.Printf("[dispatcher] GenerateTextWithFallback: cross-provider fallback to %s", fbProvider)
 		resp, err = d.generateTextAttempt(ctx, fbProvider, "", req)

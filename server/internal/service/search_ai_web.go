@@ -61,7 +61,7 @@ func (p *AIWebSearchProvider) Search(ctx context.Context, keyword string, limit 
 	chain := p.modelChain
 	if p.modelRegistry != nil && len(chain) > 0 {
 		primary := chain[0]
-		fallbacks := p.modelRegistry.GetFallbackChain(0, primary, model.CapTextGen)
+		fallbacks := p.modelRegistry.GetFallbackProviders(0, primary, model.CapTextGen)
 		chain = append([]string{primary}, fallbacks...)
 	}
 

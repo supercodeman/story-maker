@@ -23,7 +23,8 @@
         >
           <span>{{ group.label }} (默认)</span>
           <el-tag v-if="group.key_source === 'user'" size="small" type="success" style="margin-left:8px">自有Key</el-tag>
-          <el-tag v-if="!group.available" size="small" type="danger" style="margin-left:8px">不可用</el-tag>
+          <el-tag v-if="!group.available && !group.key_source" size="small" type="warning" style="margin-left:8px">未配置Key</el-tag>
+          <el-tag v-else-if="!group.available" size="small" type="danger" style="margin-left:8px">不可用</el-tag>
         </el-option>
         <el-option
           v-for="sub in (group.sub_models || [])"
@@ -49,7 +50,8 @@
       >
         <span>{{ m.label }}</span>
         <el-tag v-if="m.key_source === 'user'" size="small" type="success" style="margin-left:8px">自有Key</el-tag>
-        <el-tag v-if="!m.available" size="small" type="danger" style="margin-left:8px">不可用</el-tag>
+        <el-tag v-if="!m.available && !m.key_source" size="small" type="warning" style="margin-left:8px">未配置Key</el-tag>
+        <el-tag v-else-if="!m.available" size="small" type="danger" style="margin-left:8px">不可用</el-tag>
       </el-option>
     </template>
   </el-select>

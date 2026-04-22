@@ -514,7 +514,7 @@ func (c *FactCollector) embeddingWithFallback(ctx context.Context, texts []strin
 	var providers []string
 	if c.modelRegistry != nil {
 		defaultEmb := c.modelRegistry.GetDefaultModel(model.CapEmbedding)
-		providers = append([]string{defaultEmb}, c.modelRegistry.GetFallbackChain(0, defaultEmb, model.CapEmbedding)...)
+		providers = append([]string{defaultEmb}, c.modelRegistry.GetFallbackProviders(0, defaultEmb, model.CapEmbedding)...)
 	} else {
 		providers = []string{"qwen", "zhipu"}
 	}

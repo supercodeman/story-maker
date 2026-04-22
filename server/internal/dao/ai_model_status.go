@@ -63,6 +63,24 @@ func (d *AIModelStatusDAO) Delete(ctx context.Context, id uint) error {
 	return d.db.WithContext(ctx).Delete(&model.AIModelStatus{}, id).Error
 }
 
+// GetAvailableFallbacks 按能力查询可用模型，按 priority ASC, latency_ms ASC 排序
+func (d *AIModelStatusDAO) GetAvailableFallbacks(ctx context.Context, capability string) ([]*model.AIModelStatus, error) {
+	var list []*model.AIModelStatus
+	err := d.db.WithContext(ctx).
+		Where("capability = ? AND is_available = ? AND model_name != ''", capability, true).
+		Order("priority ASC, latency_ms ASC").
+		Find(&list).Error
+	return list, err
+}
+
+// UpdatePriority 更新模型优先级
+func (d *AIModelStatusDAO) UpdatePriority(ctx context.Context, id uint, priority int) error {
+	return d.db.WithContext(ctx).
+		Model(&model.AIModelStatus{}).
+		Where("id = ?", id).
+		Update("priority", priority).Error
+}
+
 // UpdateAvailability 更新模型可用性
 func (d *AIModelStatusDAO) UpdateAvailability(ctx context.Context, provider, modelName, capability string, available bool, latencyMs int, lastError string) error {
 	now := time.Now()

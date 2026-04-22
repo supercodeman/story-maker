@@ -315,7 +315,7 @@ func (s *ChapterSummaryService) mergeSummaries(ctx context.Context, nodes []mode
 	// 构建降级链
 	chain := []string{defaultModel}
 	if s.modelRegistry != nil {
-		chain = append(chain, s.modelRegistry.GetFallbackChain(0, defaultModel, model.CapTextGen)...)
+		chain = append(chain, s.modelRegistry.GetFallbackProviders(0, defaultModel, model.CapTextGen)...)
 	}
 
 	var parts []string

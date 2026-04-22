@@ -351,6 +351,7 @@ func Setup() *gin.Engine {
 				models.POST("", modelHandler.AddModel)
 				models.DELETE("/:id", modelHandler.DeleteModel)
 				models.POST("/test", modelHandler.TestModel)
+				models.PUT("/:id/priority", modelHandler.UpdatePriority)
 			}
 
 			// Conversation 会话路由

@@ -119,3 +119,27 @@ func (h *ModelHandler) TestModel(c *gin.Context) {
 
 	Success(c, result)
 }
+
+// UpdatePriority PUT /api/v1/models/:id/priority（更新模型优先级）
+func (h *ModelHandler) UpdatePriority(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		BadRequest(c, "invalid model id")
+		return
+	}
+
+	var req struct {
+		Priority int `json:"priority"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		BadRequest(c, "invalid request body")
+		return
+	}
+
+	if err := h.modelRegistry.UpdateModelPriority(c.Request.Context(), uint(id), req.Priority); err != nil {
+		InternalError(c, "failed to update priority")
+		return
+	}
+
+	Success(c, gin.H{"message": "priority updated"})
+}

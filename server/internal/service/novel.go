@@ -408,17 +408,16 @@ func (s *NovelService) UpdateChapter(userID, chapterID uint, req *UpdateChapterR
 	oldWordCount := chapter.WordCount
 
 	// 检测内容是否有变化
-	contentChanged := (req.Content != "" && req.Content != chapter.Content) || req.Summary != chapter.Summary
+	contentChanged := (req.Content != "" && req.Content != chapter.Content) || (req.Summary != "" && req.Summary != chapter.Summary)
 
 	if req.Title != "" {
 		chapter.Title = req.Title
 	}
-	if req.Summary != "" || req.Content != "" {
-		// 只在有明确传值时覆盖，避免部分更新时误清空
-		if req.Content != "" {
-			chapter.Content = req.Content
-			chapter.WordCount = utf8.RuneCountInString(req.Content)
-		}
+	if req.Content != "" {
+		chapter.Content = req.Content
+		chapter.WordCount = utf8.RuneCountInString(req.Content)
+	}
+	if req.Summary != "" {
 		chapter.Summary = req.Summary
 	}
 

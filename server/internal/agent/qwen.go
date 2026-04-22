@@ -298,8 +298,10 @@ func (q *QwenProvider) Name() string {
 }
 
 // FallbackModels 返回同 Provider 内的降级模型列表
+// 通义千问代理了多个模型（qwen-max、deepseek-v3.2、deepseek-v3），各模型有独立配额，
+// 某个模型额度耗尽时可降级到其他模型
 func (q *QwenProvider) FallbackModels() []string {
-	return []string{"deepseek-v3.2", "deepseek-v3", "MiniMax-M2.5"}
+	return []string{"qwen-max", "deepseek-v3.2", "deepseek-v3"}
 }
 
 // Capabilities 返回千问支持的能力列表

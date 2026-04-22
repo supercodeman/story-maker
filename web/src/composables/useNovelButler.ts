@@ -59,7 +59,8 @@ export interface ButlerState {
   chapterNum: number
   outlineChapters: { title: string; summary: string }[]
   outlineTaskId: number | null
-  // 步骤5 特有：开篇打磨（前5章精细化概要）
+  // 步骤5 特有：开篇打磨（前N章精细化概要）
+  openingChapterCount: number
   openingChapters: any[]
   openingProgress: { phase: 'idle' | 'polishing' | 'generating' | 'done'; current: number; total: number }
   // 步骤6 特有：知识图谱提取进度
@@ -100,6 +101,7 @@ function createButlerState(): ButlerState {
     chapterNum: 56,
     outlineChapters: [],
     outlineTaskId: null,
+    openingChapterCount: 5,
     openingChapters: [],
     openingProgress: { phase: 'idle', current: 0, total: 5 },
     knowledgeProgress: { phase: 'idle', taskId: null },
@@ -158,6 +160,13 @@ export function useNovelButler(
       if (!snapshot?.state?.active) return false
 
       const saved: ButlerState = snapshot.state
+
+      // 所有步骤已完成，清除旧状态，不自动恢复
+      if (saved.steps.content?.status === 'confirmed') {
+        clearSavedState()
+        localStorage.removeItem(SESSION_KEY)
+        return false
+      }
 
       // 恢复前处理：generating 状态重置为 idle（轮询已丢失）
       for (const step of STEPS) {
@@ -684,23 +693,24 @@ export function useNovelButler(
     }
   }
 
-  /** 步骤5：开篇打磨（前5章概要精细化 + 内容生成） */
+  /** 步骤5：开篇打磨（前N章概要精细化 + 内容生成） */
   async function runOpeningPolishStep() {
     const stepState = state.steps.opening_polish
     stepState.status = 'generating'
     stepState.error = null
-    state.openingProgress = { phase: 'polishing', current: 0, total: 5 }
+    const oc = state.openingChapterCount || 5
+    state.openingProgress = { phase: 'polishing', current: 0, total: oc }
 
-    // 取前5章概要
-    const first5 = state.outlineChapters.slice(0, 5)
-    if (first5.length === 0) {
+    // 取前N章概要
+    const firstN = state.outlineChapters.slice(0, oc)
+    if (firstN.length === 0) {
       stepState.status = 'confirmed'
       stepState.result = '无章节数据，跳过开篇打磨'
       runStep('content')
       return
     }
 
-    const chaptersText = first5.map((ch, i) => `第${i + 1}章「${ch.title}」：${ch.summary}`).join('\n\n')
+    const chaptersText = firstN.map((ch, i) => `第${i + 1}章「${ch.title}」：${ch.summary}`).join('\n\n')
 
     try {
       // 阶段1：概要精细化（多轮迭代）
@@ -746,7 +756,7 @@ export function useNovelButler(
               if (status.structured_data) {
                 try {
                   state.openingChapters = JSON.parse(status.structured_data)
-                  // 用精细化概要替换 outlineChapters 前5章的 summary
+                  // 用精细化概要替换 outlineChapters 前N章的 summary
                   for (const enhanced of state.openingChapters) {
                     const idx = (enhanced.chapter_index || 1) - 1
                     if (idx >= 0 && idx < state.outlineChapters.length && enhanced.enhanced_summary) {
@@ -779,11 +789,11 @@ export function useNovelButler(
         }, 3000)
       })
 
-      // 阶段2：逐章生成前5章正文（使用 opening_chapter 工作流）
+      // 阶段2：逐章生成前N章正文（使用 opening_chapter 工作流）
       if (state.createdNovelId) {
         await novelStore.fetchChapters(state.createdNovelId)
         const chapters = novelStore.chapters
-        const openingCount = Math.min(5, chapters.length)
+        const openingCount = Math.min(oc, chapters.length)
         state.openingProgress.total = openingCount
 
         for (let i = 0; i < openingCount; i++) {
@@ -815,7 +825,7 @@ export function useNovelButler(
 
       state.openingProgress.phase = 'done'
       stepState.status = 'confirmed'
-      stepState.result = `前${Math.min(5, first5.length)}章开篇打磨完成`
+      stepState.result = `前${Math.min(oc, firstN.length)}章开篇打磨完成`
 
       // 推进到内容填充
       runStep('content')
@@ -900,9 +910,9 @@ export function useNovelButler(
 
       state.contentProgress = { total: chapters.length, completed: 0, current: '' }
 
-      // 逐章生成内容（跳过开篇打磨已生成的前5章）
+      // 逐章生成内容（跳过开篇打磨已生成的前N章）
       const openingDone = state.openingProgress?.phase === 'done'
-      const skipCount = openingDone ? Math.min(5, chapters.length) : 0
+      const skipCount = openingDone ? Math.min(state.openingChapterCount || 5, chapters.length) : 0
       const chaptersToGenerate = chapters.slice(skipCount)
       state.contentProgress.total = chaptersToGenerate.length
       state.contentProgress.completed = 0
@@ -938,9 +948,14 @@ export function useNovelButler(
 
       stepState.status = 'confirmed'
       stepState.result = `内容生成完成：${state.contentProgress.completed}/${state.contentProgress.total} 章`
+      // 流程全部完成，清除持久化状态，下次进入不再恢复
+      clearSavedState()
+      localStorage.removeItem(SESSION_KEY)
     } catch {
       stepState.status = 'confirmed'
       stepState.result = '小说已创建，请在主界面使用批量生成功能填充内容'
+      clearSavedState()
+      localStorage.removeItem(SESSION_KEY)
     }
   }
 
@@ -1134,6 +1149,15 @@ export function useNovelButler(
           nextStep = 'chapters'
         }
       }
+
+      // 步骤1-3都已 confirmed，无法确定后续步骤状态，不自动恢复
+      // 用户可从列表中手动点击恢复（走 restoreFromTasks 完整检查所有步骤）
+      if (nextStep === 'chapters') {
+        Object.assign(state, createButlerState())
+        localStorage.removeItem(SESSION_KEY)
+        return false
+      }
+
       state.currentStep = nextStep
 
       return true
@@ -1365,15 +1389,16 @@ export function useNovelButler(
         }
       }
 
-      // 步骤 6（开篇打磨）：检查前5章是否已有内容（有内容说明开篇打磨已完成）
+      // 步骤 6（开篇打磨）：检查前N章是否已有内容（有内容说明开篇打磨已完成）
       if (!firstIncomplete) {
         try {
+          const oc = state.openingChapterCount || 5
           await novelStore.fetchChapters(novelId)
           const chapters = novelStore.chapters
-          const first5WithContent = chapters.slice(0, 5).filter((ch: any) => ch.content && ch.content.trim())
-          if (first5WithContent.length >= Math.min(5, chapters.length)) {
+          const firstNWithContent = chapters.slice(0, oc).filter((ch: any) => ch.content && ch.content.trim())
+          if (firstNWithContent.length >= Math.min(oc, chapters.length)) {
             state.steps.opening_polish.status = 'confirmed'
-            state.steps.opening_polish.result = '前5章开篇打磨已完成'
+            state.steps.opening_polish.result = `前${oc}章开篇打磨已完成`
             state.openingProgress.phase = 'done'
           } else {
             firstIncomplete = 'opening_polish'

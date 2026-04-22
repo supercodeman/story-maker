@@ -324,7 +324,7 @@ func (z *ZhipuProvider) Name() string {
 
 // FallbackModels 返回同 Provider 内的降级模型列表
 func (z *ZhipuProvider) FallbackModels() []string {
-	return []string{"GLM-4.5-Flash", "GLM-4.7-FLASH"}
+	return nil // 降级链已由 DB 驱动，不再硬编码
 }
 
 // Capabilities 返回智谱支持的能力列表

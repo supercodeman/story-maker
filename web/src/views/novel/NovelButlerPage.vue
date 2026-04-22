@@ -553,7 +553,18 @@
 
           <!-- idle：等待用户触发 -->
           <div v-if="state.steps.opening_polish.status === 'idle'" class="step-idle-action">
-            <p style="color: #666; margin-bottom: 16px;">对前5章概要进行精细化打磨，并生成开篇正文内容。</p>
+            <p style="color: #666; margin-bottom: 16px;">对前N章概要进行精细化打磨，并生成开篇正文内容。</p>
+            <div class="step-hint-box__row" style="margin-bottom: 16px;">
+              <label class="step-hint-box__label">开篇章节数</label>
+              <el-input-number
+                v-model="state.openingChapterCount"
+                :min="1"
+                :max="20"
+                :step="1"
+                size="default"
+              />
+              <span class="step-hint-box__tip">默认 5 章</span>
+            </div>
             <button class="action-btn action-btn--primary" @click="submitStepHint('opening_polish')">
               开始打磨
             </button>
@@ -568,11 +579,11 @@
               <el-icon class="is-loading" :size="32"><Loading /></el-icon>
             </div>
             <p class="iteration-progress__title">
-              {{ state.openingProgress.phase === 'polishing' ? '阶段1：前5章概要精细化' : '阶段2：前5章内容生成' }}
+              {{ state.openingProgress.phase === 'polishing' ? `阶段1：前${state.openingChapterCount || 5}章概要精细化` : `阶段2：前${state.openingChapterCount || 5}章内容生成` }}
             </p>
             <p class="iteration-progress__detail">
               <template v-if="state.openingProgress.phase === 'polishing'">
-                AI 正在精细化前5章概要...
+                AI 正在精细化前{{ state.openingChapterCount || 5 }}章概要...
                 <template v-if="state.steps.opening_polish.iterationRound && state.steps.opening_polish.iterationRound > 0">
                   · 第 {{ state.steps.opening_polish.iterationRound }} / {{ state.steps.opening_polish.iterationMaxRounds || 5 }} 轮
                 </template>
@@ -808,8 +819,30 @@ onMounted(async () => {
   // 先尝试从 localStorage 恢复
   const restored = restoreState()
   if (restored) {
-    mode.value = 'create'
-    started.value = true
+    // localStorage 恢复的快照可能已过时（流程可能在别处完成了）
+    // 保存 novelId 用于后续验证（restoreFromAITasks 可能重置 state）
+    const savedNovelId = state.createdNovelId
+    // 用 restoreFromAITasks 从服务端验证实际进度
+    const serverValid = await restoreFromAITasks()
+    if (serverValid) {
+      // 服务端确认流程仍在进行中
+      mode.value = 'create'
+      started.value = true
+    } else if (savedNovelId) {
+      // 有 novelId，用 restoreFromTasks 做完整验证
+      const ok = await restoreFromTasks(savedNovelId)
+      if (ok && !isAllDone.value) {
+        mode.value = 'create'
+        started.value = true
+      } else {
+        closeButler()
+        await loadButlerNovels()
+      }
+    } else {
+      // 服务端说不该恢复，清除旧状态，展示列表
+      closeButler()
+      await loadButlerNovels()
+    }
   } else {
     // localStorage 无数据，尝试从 ai_task 恢复（butler_session_id 独立存储）
     const restoredFromTasks = await restoreFromAITasks()
@@ -829,11 +862,11 @@ onUnmounted(() => {
   disconnectWebSocket()
 })
 
-// state 变化时自动保存（仅在管家激活时）
+// state 变化时自动保存（仅在管家激活且流程未全部完成时）
 watch(
   () => state,
   () => {
-    if (state.active) saveState()
+    if (state.active && state.steps.content.status !== 'confirmed') saveState()
   },
   { deep: true },
 )

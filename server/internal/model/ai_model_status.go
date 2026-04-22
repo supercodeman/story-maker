@@ -25,6 +25,7 @@ type AIModelStatus struct {
 	LastCheck   *time.Time `json:"last_check"`
 	LastError   string     `gorm:"size:500;default:''" json:"last_error"`
 	LatencyMs   int        `gorm:"default:0" json:"latency_ms"`
+	Priority    int        `gorm:"default:0" json:"priority"` // 降级优先级，数字越小越优先
 	CreatedAt   time.Time  `json:"created_at"`
 	UpdatedAt   time.Time  `json:"updated_at"`
 }
@@ -60,32 +61,32 @@ var DefaultProviders = []ProviderMeta{
 			{ModelName: "deepseek-v3", DisplayName: "deepseek-v3"},
 		},
 	},
-	//{
-	//	Provider:     "zhipu",
-	//	DisplayName:  "智谱 AI",
-	//	Priority:     2,
-	//	Capabilities: []string{CapTextGen, CapTextPolish, CapEmbedding},
-	//	Models: []ModelMeta{
-	//		{ModelName: "glm-4.5-flash", DisplayName: "GLM-4.5 Flash"},
-	//		{ModelName: "glm-4.7-flash", DisplayName: "GLM-4.7 Flash"},
-	//	},
-	//},
-	//{
-	//	Provider:     "deepseek",
-	//	DisplayName:  "DeepSeek",
-	//	Priority:     3,
-	//	Capabilities: []string{CapTextGen, CapTextPolish},
-	//	Models: []ModelMeta{
-	//		{ModelName: "deepseek-r1:7b", DisplayName: "DeepSeek Chat"},
-	//	},
-	//},
-	//{
-	//	Provider:     "kimi",
-	//	DisplayName:  "Kimi",
-	//	Priority:     4,
-	//	Capabilities: []string{CapTextGen, CapTextPolish},
-	//	Models: []ModelMeta{
-	//		{ModelName: "", DisplayName: "默认"},
-	//	},
-	//},
+	{
+		Provider:     "zhipu",
+		DisplayName:  "智谱 AI",
+		Priority:     2,
+		Capabilities: []string{CapTextGen, CapTextPolish, CapEmbedding},
+		Models: []ModelMeta{
+			{ModelName: "glm-4.5-flash", DisplayName: "GLM-4.5 Flash"},
+			{ModelName: "glm-4.7-flash", DisplayName: "GLM-4.7 Flash"},
+		},
+	},
+	{
+		Provider:     "deepseek",
+		DisplayName:  "DeepSeek",
+		Priority:     3,
+		Capabilities: []string{CapTextGen, CapTextPolish},
+		Models: []ModelMeta{
+			{ModelName: "deepseek-r1:7b", DisplayName: "DeepSeek Chat"},
+		},
+	},
+	{
+		Provider:     "kimi",
+		DisplayName:  "Kimi",
+		Priority:     4,
+		Capabilities: []string{CapTextGen, CapTextPolish},
+		Models: []ModelMeta{
+			{ModelName: "", DisplayName: "默认"},
+		},
+	},
 }

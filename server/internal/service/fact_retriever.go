@@ -137,7 +137,7 @@ func (r *FactRetriever) getQueryEmbedding(ctx context.Context, text string) ([]f
 	var providers []string
 	if r.modelRegistry != nil {
 		defaultEmb := r.modelRegistry.GetDefaultModel(model.CapEmbedding)
-		providers = append([]string{defaultEmb}, r.modelRegistry.GetFallbackChain(0, defaultEmb, model.CapEmbedding)...)
+		providers = append([]string{defaultEmb}, r.modelRegistry.GetFallbackProviders(0, defaultEmb, model.CapEmbedding)...)
 	} else {
 		providers = []string{"qwen", "zhipu"}
 	}

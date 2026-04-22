@@ -245,8 +245,7 @@ func (d *DeepSeekProvider) Name() string {
 
 // FallbackModels 降级模型
 func (d *DeepSeekProvider) FallbackModels() []string {
-	//return []string{"deepseek-coder", "deepseek-chat"}
-	return []string{"deepseek-r1:latest"}
+	return nil // 降级链已由 DB 驱动，不再硬编码
 }
 
 // Capabilities 能力列表

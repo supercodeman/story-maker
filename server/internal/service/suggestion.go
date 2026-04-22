@@ -150,7 +150,7 @@ func (s *SuggestionService) callWithFallback(ctx context.Context, primaryProvide
 	// 跨 provider 降级
 	var crossProviders []string
 	if s.modelRegistry != nil {
-		crossProviders = s.modelRegistry.GetFallbackChain(0, primaryProvider, model.CapTextGen)
+		crossProviders = s.modelRegistry.GetFallbackProviders(0, primaryProvider, model.CapTextGen)
 	} else {
 		crossProviders = []string{"qwen", "zhipu", "deepseek", "kimi"}
 	}

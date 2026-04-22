@@ -47,6 +47,7 @@ type ModelStatusDetail struct {
 	Capability string  `json:"capability"`
 	Available  bool    `json:"available"`
 	LatencyMs  int     `json:"latency_ms"`
+	Priority   int     `json:"priority"`
 	LastCheck  *string `json:"last_check"`
 	LastError  string  `json:"last_error"`
 }
@@ -275,22 +276,96 @@ func (s *ModelRegistryService) ResolveModel(userModel, capability string) string
 	return s.GetDefaultModel(capability)
 }
 
-// GetFallbackChain 返回降级链（排除不可用的，排除 primary 自身）
-func (s *ModelRegistryService) GetFallbackChain(userID uint, primary string, capability string) []string {
+// GetFallbackProviders 返回降级 Provider 列表（排除 primary 自身）
+// 有个人 Key 的 provider 优先排前面（组内按 Priority），无个人 Key 的排后面
+func (s *ModelRegistryService) GetFallbackProviders(userID uint, primary string, capability string) []string {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	var chain []string
+	// 分两组：有个人 Key 的和没有的
+	var withUserKey, withoutUserKey []string
 	for _, pm := range model.DefaultProviders {
 		if pm.Provider == primary {
 			continue
 		}
 		key := cacheKey(pm.Provider, "", capability)
-		if status, ok := s.cache[key]; ok && status.IsAvailable {
-			chain = append(chain, pm.Provider)
+		if status, ok := s.cache[key]; ok && !status.IsAvailable {
+			continue
+		}
+
+		// 检查用户是否有该 provider 的个人 Key
+		hasUserKey := false
+		if userID > 0 && s.keyService != nil {
+			ctx := context.Background()
+			uk, err := s.keyService.GetUserKey(ctx, userID, pm.Provider)
+			if err == nil && uk != "" {
+				hasUserKey = true
+			}
+		}
+
+		if hasUserKey {
+			withUserKey = append(withUserKey, pm.Provider)
+		} else {
+			withoutUserKey = append(withoutUserKey, pm.Provider)
 		}
 	}
-	return chain
+
+	// 有个人 Key 的排前面，组内已按 DefaultProviders 的 Priority 顺序
+	return append(withUserKey, withoutUserKey...)
+}
+
+// GetFallbackChain 实现 agent.ModelChecker 接口
+// 从 DB 缓存获取指定能力的降级链，按优先级排序，排除当前模型
+func (s *ModelRegistryService) GetFallbackChain(capability, currentProvider, currentModel string) []agent.FallbackEntry {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	// 收集所有可用的子模型，按 Priority、LatencyMs 排序
+	type candidate struct {
+		provider  string
+		modelName string
+		priority  int
+		latencyMs int
+	}
+	var candidates []candidate
+
+	for _, item := range s.cache {
+		if item.Capability != capability || !item.IsAvailable {
+			continue
+		}
+		if item.ModelName == "" {
+			continue // 跳过 provider 级别记录，只取具体子模型
+		}
+		// 排除当前正在使用的模型
+		if item.Provider == currentProvider && item.ModelName == currentModel {
+			continue
+		}
+		candidates = append(candidates, candidate{
+			provider:  item.Provider,
+			modelName: item.ModelName,
+			priority:  item.Priority,
+			latencyMs: item.LatencyMs,
+		})
+	}
+
+	// 按 priority ASC, latency_ms ASC 排序
+	for i := 0; i < len(candidates); i++ {
+		for j := i + 1; j < len(candidates); j++ {
+			if candidates[j].priority < candidates[i].priority ||
+				(candidates[j].priority == candidates[i].priority && candidates[j].latencyMs < candidates[i].latencyMs) {
+				candidates[i], candidates[j] = candidates[j], candidates[i]
+			}
+		}
+	}
+
+	result := make([]agent.FallbackEntry, 0, len(candidates))
+	for _, c := range candidates {
+		result = append(result, agent.FallbackEntry{
+			Provider:  c.provider,
+			ModelName: c.modelName,
+		})
+	}
+	return result
 }
 
 // HealthCheckAll 探测所有 Provider 及其子模型的可用性
@@ -458,6 +533,7 @@ func (s *ModelRegistryService) GetAllModelStatus(ctx context.Context) ([]ModelSt
 			Capability: item.Capability,
 			Available:  item.IsAvailable,
 			LatencyMs:  item.LatencyMs,
+			Priority:   item.Priority,
 			LastError:  item.LastError,
 		}
 		if item.LastCheck != nil {
@@ -487,6 +563,14 @@ func (s *ModelRegistryService) AddModel(ctx context.Context, req *AddModelReques
 func (s *ModelRegistryService) DeleteModel(ctx context.Context, id uint) error {
 	if err := s.dao.Delete(ctx, id); err != nil {
 		return fmt.Errorf("delete model failed: %w", err)
+	}
+	return s.LoadCache(ctx)
+}
+
+// UpdateModelPriority 更新模型优先级并刷新缓存
+func (s *ModelRegistryService) UpdateModelPriority(ctx context.Context, id uint, priority int) error {
+	if err := s.dao.UpdatePriority(ctx, id, priority); err != nil {
+		return fmt.Errorf("update priority failed: %w", err)
 	}
 	return s.LoadCache(ctx)
 }

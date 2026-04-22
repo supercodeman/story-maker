@@ -49,7 +49,7 @@ func (p *AISearchProvider) Search(ctx context.Context, keyword string, limit int
 	// 构建降级链：主模型 + fallback
 	chain := []string{p.modelName}
 	if p.modelRegistry != nil {
-		chain = append(chain, p.modelRegistry.GetFallbackChain(0, p.modelName, model.CapTextGen)...)
+		chain = append(chain, p.modelRegistry.GetFallbackProviders(0, p.modelName, model.CapTextGen)...)
 	}
 
 	prompt := fmt.Sprintf(

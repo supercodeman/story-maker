@@ -75,7 +75,7 @@ func (s *WorkflowService) SubmitWorkflow(ctx context.Context, userID uint, req *
 	}
 
 	// 构建 DAG
-	graph, err := s.buildGraph(req)
+	graph, err := s.buildGraph(userID, req)
 	if err != nil {
 		return 0, fmt.Errorf("build graph failed: %w", err)
 	}
@@ -410,7 +410,7 @@ func (s *WorkflowService) notifyNodeUpdate(userID, workflowID uint, nodeID, stat
 }
 
 // buildGraph 根据工作流类型构建 DAG
-func (s *WorkflowService) buildGraph(req *SubmitWorkflowRequest) (*orchestrator.Graph, error) {
+func (s *WorkflowService) buildGraph(userID uint, req *SubmitWorkflowRequest) (*orchestrator.Graph, error) {
 	// 从 Params 中提取 novel_id
 	var novelID uint
 	if novelIDRaw, ok := req.Params["novel_id"]; ok {
@@ -477,7 +477,7 @@ func (s *WorkflowService) buildGraph(req *SubmitWorkflowRequest) (*orchestrator.
 		}
 		return orchestrator.BuildFullChapterGraph(req.ModelName, writingStyle, knowledgeContext, func(primary string) []string {
 			if s.modelRegistry != nil {
-				return s.modelRegistry.GetFallbackChain(0, primary, model.CapTextGen)
+				return s.modelRegistry.GetFallbackProviders(userID, primary, model.CapTextGen)
 			}
 			return orchestrator.FallbackModels(primary)
 		}), nil
@@ -510,7 +510,7 @@ func (s *WorkflowService) buildGraph(req *SubmitWorkflowRequest) (*orchestrator.
 		}
 		return orchestrator.BuildOpeningChapterGraph(req.ModelName, writingStyle, knowledgeContextOpening, func(primary string) []string {
 			if s.modelRegistry != nil {
-				return s.modelRegistry.GetFallbackChain(0, primary, model.CapTextGen)
+				return s.modelRegistry.GetFallbackProviders(userID, primary, model.CapTextGen)
 			}
 			return orchestrator.FallbackModels(primary)
 		}), nil
@@ -521,7 +521,7 @@ func (s *WorkflowService) buildGraph(req *SubmitWorkflowRequest) (*orchestrator.
 		}
 		return orchestrator.BuildBatchExpandGraph(req.ModelName, chapters, writingStyle, func(primary string) []string {
 			if s.modelRegistry != nil {
-				return s.modelRegistry.GetFallbackChain(0, primary, model.CapTextGen)
+				return s.modelRegistry.GetFallbackProviders(userID, primary, model.CapTextGen)
 			}
 			return orchestrator.FallbackModels(primary)
 		}), nil
@@ -626,7 +626,7 @@ func (s *WorkflowService) RecoverStaleWorkflows() {
 			ModelName:    modelName,
 			Params:       params,
 		}
-		graph, err := s.buildGraph(req)
+		graph, err := s.buildGraph(wf.UserID, req)
 		if err != nil {
 			log.Printf("[workflow-recovery] workflow %d: failed to rebuild graph: %v", wf.ID, err)
 			s.markWorkflowFailed(ctx, wf, "恢复失败: 无法重建 DAG")

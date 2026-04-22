@@ -19,6 +19,7 @@ export interface ModelStatusDetail {
   capability: string
   available: boolean
   latency_ms: number
+  priority: number
   last_check: string | null
   last_error: string
 }
@@ -65,4 +66,9 @@ export function deleteModel(id: number) {
 // 测试单个模型
 export function testModel(data: { provider: string; model_name: string; capability: string }) {
   return request.post<TestModelResult>('/models/test', data)
+}
+
+// 更新模型优先级
+export function updateModelPriority(id: number, priority: number) {
+  return request.put(`/models/${id}/priority`, { priority })
 }
