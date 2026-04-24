@@ -15,7 +15,7 @@ redis:
   db: 0
 
 jwt:
-  secret: "htujhju7u"
+  secret: ""
   access_token_ttl: 172800
   refresh_token_ttl: 604800
 
