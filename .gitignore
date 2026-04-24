@@ -1,6 +1,8 @@
 # OS
 .DS_Store
 Thumbs.db
+# config
+server/config/config.yaml
 
 # IDE
 .idea/

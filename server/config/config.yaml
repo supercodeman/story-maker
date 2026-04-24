@@ -4,7 +4,7 @@ server:
   mode: debug
 
 database:
-  dsn: ""
+  dsn: "root:Super!123@tcp(127.0.0.1:3306)/ai_curton?charset=utf8mb4&parseTime=True&loc=Local"
   max_idle_conns: 10
   max_open_conns: 100
   conn_max_lifetime: 3600
@@ -15,12 +15,12 @@ redis:
   db: 0
 
 jwt:
-  secret: ""
+  secret: "htujhju7u"
   access_token_ttl: 172800
   refresh_token_ttl: 604800
 
 encrypt:
-  key: ""
+  key: "678ijhgyhn-pad-to-32-bytes!!!!"
 
 upload:
   path: "./uploads"
@@ -31,15 +31,15 @@ kimi:
   base_url: "https://api.moonshot.cn/v1"
 
 zhipu:
-  api_key: ""
+  api_key: "3fbe6d2f5ec0409d8b3c4f37ed72bac2.2SkKPWwBeSOHhENL"
   base_url: "https://api.z.ai/api/paas/v4/"
 
 qwen:
-  api_key: ""
+  api_key: "sk-e77ba6af1eca4b2b86b01ec396d6820c"
   base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
 
 deepseek:
-  api_key : ""
+  api_key : "sk-4810ba6fbbe14b9b9de8b0a225c047ca"
   base_url: " http://127.0.0.1:11434"
 
 ai:
