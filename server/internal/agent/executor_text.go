@@ -55,6 +55,7 @@ func (e *TextTaskExecutor) Execute(ctx context.Context, ec *ExecContext) (interf
 
 	// Tool 执行循环（最多 5 轮，防止死循环）
 	const maxToolRounds = 5
+	toolsCleared := false // 标记是否已清除 tools 定义
 	for i := 0; i < maxToolRounds; i++ {
 		resp, err := ec.Provider.GenerateText(ctx, req)
 		if err != nil {
@@ -82,6 +83,19 @@ func (e *TextTaskExecutor) Execute(ctx context.Context, ec *ExecContext) (interf
 				"content": content,
 				"usage":   totalUsage,
 			}, nil
+		}
+
+		// tools 已清除后模型仍返回 tool_calls（幻觉），忽略 tool_calls，
+		// 取 Content 作为最终结果；若 Content 也为空则继续循环让模型重试
+		if toolsCleared {
+			if resp.Content != "" {
+				content := CleanNovelContent(resp.Content)
+				return map[string]interface{}{
+					"content": content,
+					"usage":   totalUsage,
+				}, nil
+			}
+			continue
 		}
 
 		// 有 tool_call：执行工具，将结果追加到 history 继续对话
@@ -114,6 +128,7 @@ func (e *TextTaskExecutor) Execute(ctx context.Context, ec *ExecContext) (interf
 		// tool 结果已注入 history，后续轮次不再提供 tools 定义，
 		// 避免模型反复调用工具浪费 token
 		req.Tools = nil
+		toolsCleared = true
 		// Prompt 已在 history 中，清空避免 provider 重复追加 user 消息
 		req.Prompt = ""
 	}

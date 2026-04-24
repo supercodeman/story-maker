@@ -85,34 +85,21 @@ export function useBatchGenerate(
   // ========== 上下文构建 ==========
 
   /**
-   * 构建前情提要上下文
-   * 取当前章节之前最近 3 章的 title + summary，拼接为结构化文本
+   * 构建前情提要上下文（仅前文回顾，不含本章概要）
+   * 取当前章节之前最近 5 章的 title + summary，拼接为结构化文本
+   * 注意：服务端如果有递归摘要树数据，会用更完整的上下文覆盖此字段
    */
-  function buildContext(chapter: Chapter): string {
+  function buildPrevContext(chapter: Chapter): string {
     const allChapters = [...novelStore.chapters].sort((a, b) => a.sort_order - b.sort_order)
     const idx = allChapters.findIndex(c => c.id === chapter.id)
 
-    // 取前面最近 3 章（优先用已生成的新内容）
-    const prevChapters = allChapters.slice(Math.max(0, idx - 3), idx)
-    const parts: string[] = []
+    // 取前面最近 5 章（与单章生成保持一致）
+    const prevChapters = allChapters.slice(Math.max(0, idx - 5), idx)
+    if (prevChapters.length === 0) return ''
 
-    if (prevChapters.length > 0) {
-      parts.push('【前情提要】')
-      for (const prev of prevChapters) {
-        const summary = (prev.summary || '').slice(0, 500)
-        parts.push(`第${prev.sort_order}章「${prev.title}」：${summary}`)
-      }
-      parts.push('')
-    }
-
-    // 本章概要
-    const chapterSummary = chapter.summary || ''
-    if (chapterSummary) {
-      parts.push('【本章概要】')
-      parts.push(chapterSummary)
-    }
-
-    return parts.join('\n')
+    return prevChapters
+      .map(c => `第${c.sort_order}章「${c.title}」：${c.summary || '（暂无概要）'}`)
+      .join('\n')
   }
 
   // ========== 串行调度 ==========
@@ -211,10 +198,13 @@ export function useBatchGenerate(
     }
 
     try {
-      const context = buildContext(chapter)
+      const prevContext = buildPrevContext(chapter)
       const params: Record<string, any> = {
         title: chapter.title,
-        background: context,
+        background: chapter.summary || '',
+        prev_context: prevContext,
+        chapter_id: chapter.id,
+        chapter_sort_order: chapter.sort_order,
       }
       if (novelId) {
         params.novel_id = novelId()
