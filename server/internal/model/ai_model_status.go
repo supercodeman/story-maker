@@ -50,6 +50,16 @@ type ProviderMeta struct {
 // DefaultProviders 所有 Provider 的静态注册表（作为 seed 数据源）
 var DefaultProviders = []ProviderMeta{
 	{
+		Provider:     "minimax",
+		DisplayName:  "Minimax",
+		Priority:     0,
+		Capabilities: []string{CapTextGen, CapTextPolish},
+		Models: []ModelMeta{
+			{ModelName: "abab6.5-chat", DisplayName: "Abab 6.5 Chat"},
+			{ModelName: "abab6-chat", DisplayName: "Abab 6 Chat"},
+		},
+	},
+	{
 		Provider:     "qwen",
 		DisplayName:  "通义千问",
 		Priority:     1,

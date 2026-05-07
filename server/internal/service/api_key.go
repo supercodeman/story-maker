@@ -175,6 +175,8 @@ func (s *APIKeyService) GetDefaultKey(ctx context.Context, provider string) (str
 		key = config.Global.Qwen.APIKey
 	case model.ProviderDeepseek:
 		key = config.Global.Deepseek.APIKey
+	case model.ProviderMinimax:
+		key = config.Global.MiniMax.APIKey
 	default:
 		return "", errors.New("no default API key configured for " + provider)
 	}
@@ -187,7 +189,7 @@ func (s *APIKeyService) GetDefaultKey(ctx context.Context, provider string) (str
 // isValidProvider 校验 Provider 白名单
 func isValidProvider(provider string) bool {
 	switch provider {
-	case model.ProviderKimi, model.ProviderClaude, model.ProviderCopilot, model.ProviderZhipu, model.ProviderQwen, model.ProviderDeepseek:
+	case model.ProviderKimi, model.ProviderClaude, model.ProviderCopilot, model.ProviderZhipu, model.ProviderQwen, model.ProviderDeepseek, model.ProviderMinimax:
 		return true
 	default:
 		return false

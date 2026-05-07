@@ -18,22 +18,23 @@ import (
 
 // AppConfig 应用全局配置
 type AppConfig struct {
-	Server      ServerConfig      `mapstructure:"server"`
-	Database    DatabaseConfig    `mapstructure:"database"`
-	Redis       RedisConfig       `mapstructure:"redis"`
-	JWT         JWTConfig         `mapstructure:"jwt"`
-	Encrypt     EncryptConfig     `mapstructure:"encrypt"`
-	Upload      UploadConfig      `mapstructure:"upload"`
-	Kimi        KimiConfig        `mapstructure:"kimi"`
-	Zhipu       ZhipuConfig       `mapstructure:"zhipu"`
-	Qwen        QwenConfig        `mapstructure:"qwen"`
-	Deepseek    DeepseekConfig    `mapstructure:"deepseek"`
-	MiniMax     MiniMaxConfig     `mapstructure:"minimax"`
-	CogVideo    CogVideoConfig    `mapstructure:"cogvideo"`
-	AI          AIConfig          `mapstructure:"ai"`
-	QWeather    QWeatherConfig    `mapstructure:"qweather"`
-	NovelSearch NovelSearchConfig `mapstructure:"novel_search"`
-	Milvus      MilvusConfig      `mapstructure:"milvus"`
+	Server           ServerConfig      `mapstructure:"server"`
+	Database         DatabaseConfig    `mapstructure:"database"`
+	InterviewDatabase DatabaseConfig   `mapstructure:"interview_database"` // 面试系统数据库
+	Redis            RedisConfig       `mapstructure:"redis"`
+	JWT              JWTConfig         `mapstructure:"jwt"`
+	Encrypt          EncryptConfig     `mapstructure:"encrypt"`
+	Upload           UploadConfig      `mapstructure:"upload"`
+	Kimi             KimiConfig        `mapstructure:"kimi"`
+	Zhipu            ZhipuConfig       `mapstructure:"zhipu"`
+	Qwen             QwenConfig        `mapstructure:"qwen"`
+	Deepseek         DeepseekConfig    `mapstructure:"deepseek"`
+	MiniMax          MiniMaxConfig     `mapstructure:"minimax"`
+	CogVideo         CogVideoConfig    `mapstructure:"cogvideo"`
+	AI               AIConfig          `mapstructure:"ai"`
+	QWeather         QWeatherConfig    `mapstructure:"qweather"`
+	NovelSearch      NovelSearchConfig `mapstructure:"novel_search"`
+	Milvus           MilvusConfig      `mapstructure:"milvus"`
 }
 
 type ServerConfig struct {

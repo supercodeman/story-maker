@@ -1,0 +1,65 @@
+# server/config/config.yaml.example
+# 复制此文件为 config.yaml 并填入实际值
+# cp config.yaml.example config.yaml
+
+server:
+  port: 8080
+  mode: debug  # debug / release
+
+database:
+  dsn: "root:<password>@tcp(127.0.0.1:3306)/ai_curton?charset=utf8mb4&parseTime=True&loc=Local"
+  max_idle_conns: 10
+  max_open_conns: 100
+  conn_max_lifetime: 3600
+
+redis:
+  addr: "localhost:6379"
+  password: ""
+  db: 0
+
+jwt:
+  secret: "<your-jwt-secret>"
+  access_token_ttl: 172800      # 2 天（秒）
+  refresh_token_ttl: 604800     # 7 天（秒）
+
+encrypt:
+  key: "<32-bytes-aes-key-here>!!!!!!!"
+
+upload:
+  path: "./uploads"
+  max_size: 20971520  # 20MB
+
+kimi:
+  api_key: "<your-kimi-api-key>"
+  base_url: "https://api.moonshot.cn/v1"
+
+zhipu:
+  api_key: "<your-zhipu-api-key>"
+  base_url: "https://api.z.ai/api/paas/v4/"
+
+qwen:
+  api_key: "<your-qwen-api-key>"
+  base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+
+deepseek:
+  api_key: "<your-deepseek-api-key>"
+  base_url: "http://127.0.0.1:11434"
+
+minimax:
+  api_key: "<your-minimax-api-key>"
+  base_url: "https://api.minimaxi.com/v1/text/chatcompletion_v2"
+  group_id: ""
+
+ai:
+  default_provider: "minimax"  # minimax / qwen / zhipu / kimi / deepseek
+
+novel_search:
+  web_search_model: "qwen"    # AI 联网搜索主力模型
+  ai_model: "minimax"         # AI 离线兜底模型
+
+milvus:
+  enabled: false               # 需要动态记忆功能时改为 true，并启动 Milvus Docker
+  address: "localhost:19530"
+  db_name: "ai_curton"
+  collection: "novel_facts"
+  dimension: 1024

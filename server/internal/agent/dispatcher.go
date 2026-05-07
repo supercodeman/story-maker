@@ -239,6 +239,8 @@ func (d *Dispatcher) GetProviderWithKey(ctx context.Context, modelName string) (
 		p.SetAPIKey(apiKey)
 	case *DeepSeekProvider:
 		p.SetAPIKey(apiKey)
+	case *MinimaxProvider:
+		p.SetAPIKey(apiKey)
 	}
 
 	return provider, nil
@@ -405,6 +407,9 @@ func (d *Dispatcher) executeSingleAttempt(ctx context.Context, task *model.AITas
 			qp.SetAPIKey(apiKey)
 		}
 		if dp, ok := provider.(*DeepSeekProvider); ok {
+			dp.SetAPIKey(apiKey)
+		}
+		if dp, ok := provider.(*MinimaxProvider); ok {
 			dp.SetAPIKey(apiKey)
 		}
 	}
@@ -765,6 +770,9 @@ func (d *Dispatcher) generateTextAttempt(ctx context.Context, providerName, mode
 			p.SetAPIKey(apiKey)
 		case *DeepSeekProvider:
 			p.SetAPIKey(apiKey)
+		case *MinimaxProvider:
+			p.SetAPIKey(apiKey)
+
 		}
 	}
 	if modelVersion != "" {

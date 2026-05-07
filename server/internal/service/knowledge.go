@@ -600,3 +600,70 @@ func (s *KnowledgeService) GetEntityGraph(novelID, entityID uint, depth int) ([]
 
 	return entities, relations, nil
 }
+
+// GenerateQuestions 基于知识点生成面试题
+func (s *KnowledgeService) GenerateQuestions(ctx context.Context, userID, pointID uint, count int, difficulty string) (string, error) {
+	// 获取知识点详情
+	knowledge, err := s.knowledgeDAO.Get(pointID)
+	if err != nil {
+		return "", fmt.Errorf("获取知识点失败: %w", err)
+	}
+
+	// 构造prompt
+	prompt := fmt.Sprintf(`你是一位资深的技术面试官。请基于以下知识点生成 %d 道面试题。
+
+知识点标题：%s
+知识点内容：%s
+难度要求：%s
+
+要求：
+1. 题目要有深度，考察对知识点的理解和应用能力
+2. 答案要详细，包含原理、场景、最佳实践
+3. 每道题包含：question（问题）、answer（答案）、difficulty（难度）、tags（标签，逗号分隔）
+4. 返回格式为JSON数组，不要包含任何其他文字
+
+示例格式：
+[
+  {
+    "question": "问题内容",
+    "answer": "详细答案",
+    "difficulty": "%s",
+    "tags": "标签1, 标签2, 标签3"
+  }
+]`, count, knowledge.Title, knowledge.Content, difficulty, difficulty)
+
+	// 选择模型
+	modelName := "qwen"
+
+	// 创建AI任务
+	task := &model.AITask{
+		UserID:      userID,
+		TaskType:    "text",
+		ModelName:   modelName,
+		Prompt:      prompt,
+		Status:      model.TaskStatusPending,
+		PortfolioID: 0,
+	}
+
+	if err := s.aiTaskDAO.CreateTask(ctx, task); err != nil {
+		return "", fmt.Errorf("创建任务失败: %w", err)
+	}
+
+	// 同步执行AI任务
+	_, err = s.dispatcher.ExecuteSingle(ctx, task)
+	if err != nil {
+		return "", fmt.Errorf("AI生成失败: %w", err)
+	}
+
+	// 重新加载任务获取结果
+	task, err = s.aiTaskDAO.GetTask(ctx, task.ID)
+	if err != nil {
+		return "", fmt.Errorf("获取任务结果失败: %w", err)
+	}
+
+	if task.Status != model.TaskStatusCompleted {
+		return "", fmt.Errorf("任务执行失败: %s", task.ErrorMsg)
+	}
+
+	return task.Result, nil
+}

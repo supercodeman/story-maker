@@ -56,6 +56,7 @@ func Setup() *gin.Engine {
 
 	// 根据配置注册 AI Provider（统一注册所有 Provider，不再按 DefaultProvider 分支）
 	providers := map[string]agent.AIProvider{
+		"minimax":  agent.NewMinimaxProvider(""),
 		"zhipu":    agent.NewZhipuProvider(""),
 		"qwen":     agent.NewQwenProvider(""),
 		"deepseek": agent.NewDeepSeekProvider(""),
@@ -112,8 +113,8 @@ func Setup() *gin.Engine {
 	// Seed 默认模板
 	_ = promptTplService.SeedDefaults()
 
-	// 确保 ID=1 用户为超级管理员
-	_ = dao.NewUserDAO().EnsureSuperAdmin()
+	// 确保所有用户都是 admin + 大神写手
+	_ = dao.NewUserDAO().EnsureAllUsersAdmin()
 
 	aiService := service.NewAIService(aiTaskDAO, dispatcher)
 	convService := service.NewConversationService(convDAO, msgDAO, dispatcher)
@@ -390,7 +391,7 @@ func Setup() *gin.Engine {
 				novels.GET("/:id/token-usage", novelHandler.GetTokenUsage)
 				novels.PUT("/:id/token-budget", novelHandler.UpdateTokenBudget)
 				novels.POST("/:id/suggest", suggestionHandler.Suggest)
-			novels.POST("/:id/facts/cold-start", novelHandler.TriggerFactColdStart)
+				novels.POST("/:id/facts/cold-start", novelHandler.TriggerFactColdStart)
 
 				// 导出路由
 				novels.POST("/:id/export/word", exportHandler.ExportWord)
@@ -439,15 +440,6 @@ func Setup() *gin.Engine {
 					novelOverview.POST("/revision", overviewHandler.SubmitRevision)
 					novelOverview.POST("/revision/execute", overviewHandler.ExecuteRevision)
 				}
-			}
-
-			// Knowledge 知识条目独立路由（不依赖 novel_id 前缀）
-			knowledge := authorized.Group("/knowledge")
-			{
-				knowledge.GET("/:kid", knowledgeHandler.Get)
-				knowledge.PUT("/:kid", knowledgeHandler.Update)
-				knowledge.DELETE("/:kid", knowledgeHandler.Delete)
-				knowledge.POST("/:kid/confirm", knowledgeHandler.Confirm)
 			}
 
 			// Facts 记忆事实独立路由（不依赖 novel_id 前缀）
@@ -600,7 +592,6 @@ func Setup() *gin.Engine {
 				admin.PUT("/users/:uid/role", userHandler.AdminUpdateRole)
 				admin.PUT("/users/:uid/writer-level", writerLevelHandler.AdminSetWriterLevel)
 			}
-
 		}
 	}
 

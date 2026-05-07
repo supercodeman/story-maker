@@ -2,8 +2,6 @@ module ai-curton/server
 
 go 1.22
 
-toolchain go1.22.12
-
 require (
 	github.com/gin-contrib/cors v1.5.0
 	github.com/gin-gonic/gin v1.9.1

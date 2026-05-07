@@ -144,6 +144,7 @@ function capLabel(cap: string) {
 
 // Provider 显示名映射
 const providerMap: Record<string, string> = {
+  minimax: 'Minimax',
   qwen: '通义千问',
   zhipu: '智谱 AI',
   deepseek: 'DeepSeek',
@@ -151,6 +152,7 @@ const providerMap: Record<string, string> = {
 }
 
 const providerOptions = [
+  { value: 'minimax', label: 'Minimax' },
   { value: 'qwen', label: '通义千问' },
   { value: 'zhipu', label: '智谱 AI' },
   { value: 'deepseek', label: 'DeepSeek' },
@@ -175,7 +177,7 @@ const groupedData = computed(() => {
   }
 
   const groups: { provider: string; displayName: string; allAvailable: boolean; items: ModelStatusDetail[] }[] = []
-  const order = ['qwen', 'zhipu', 'deepseek', 'kimi']
+  const order = ['minimax', 'qwen', 'zhipu', 'deepseek', 'kimi']
   const sorted = [...map.keys()].sort((a, b) => {
     const ia = order.indexOf(a)
     const ib = order.indexOf(b)

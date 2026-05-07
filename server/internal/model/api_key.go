@@ -22,4 +22,5 @@ const (
 	ProviderZhipu    = "zhipu"
 	ProviderQwen     = "qwen"
 	ProviderDeepseek = "deepseek"
+	ProviderMinimax  = "minimax"
 )

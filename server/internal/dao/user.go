@@ -104,9 +104,10 @@ func (d *UserDAO) UpdateViewMode(id uint, mode string) error {
 	return d.db.Model(&model.User{}).Where("id = ?", id).Update("view_mode", mode).Error
 }
 
-// EnsureSuperAdmin 确保所有 role=admin 的用户都是大神写手（幂等）
-func (d *UserDAO) EnsureSuperAdmin() error {
-	return d.db.Model(&model.User{}).Where("role = ?", "admin").Updates(map[string]interface{}{
+// EnsureAllUsersAdmin 确保所有用户都是 admin + 大神写手（幂等，启动时调用）
+func (d *UserDAO) EnsureAllUsersAdmin() error {
+	return d.db.Model(&model.User{}).Where("role != ? OR writer_level != ? OR view_mode != ?", "admin", model.WriterLevelAdvanced, model.ViewModeAdvanced).Updates(map[string]interface{}{
+		"role":         "admin",
 		"writer_level": model.WriterLevelAdvanced,
 		"view_mode":    model.ViewModeAdvanced,
 		"level_source": model.LevelSourceAdmin,

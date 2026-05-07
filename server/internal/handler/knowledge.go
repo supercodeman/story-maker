@@ -2,8 +2,11 @@
 package handler
 
 import (
+	"encoding/json"
+	"log"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"ai-curton/server/internal/service"
 
@@ -236,4 +239,95 @@ func (h *KnowledgeHandler) ParseExtract(c *gin.Context) {
 	}
 
 	Success(c, items)
+}
+
+// GenerateQuestions 基于知识点生成面试题
+// POST /api/v1/knowledge/points/:id/generate-questions
+func (h *KnowledgeHandler) GenerateQuestions(c *gin.Context) {
+	pointID, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		BadRequest(c, "invalid knowledge point id")
+		return
+	}
+
+	var req struct {
+		Count      int    `json:"count"`
+		Difficulty string `json:"difficulty"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		BadRequest(c, err.Error())
+		return
+	}
+
+	// 默认值
+	if req.Count <= 0 {
+		req.Count = 3
+	}
+	if req.Difficulty == "" {
+		req.Difficulty = "medium"
+	}
+
+	userID := c.GetUint("user_id")
+	result, err := h.svc.GenerateQuestions(c.Request.Context(), userID, uint(pointID), req.Count, req.Difficulty)
+	if err != nil {
+		InternalError(c, err.Error())
+		return
+	}
+
+	log.Printf("[knowledge] GenerateQuestions 原始返回: %s", result)
+
+	// result可能是完整的TextResponse JSON: {"content": "...", "usage": {...}}
+	// 需要先解析提取content字段
+	var resultObj map[string]interface{}
+	if err := json.Unmarshal([]byte(result), &resultObj); err == nil {
+		log.Printf("[knowledge] 成功解析为对象，字段: %v", resultObj)
+		// 如果能解析为对象，尝试提取content字段
+		if content, ok := resultObj["content"].(string); ok {
+			log.Printf("[knowledge] 提取到content字段，长度: %d", len(content))
+			result = content
+		} else {
+			log.Printf("[knowledge] content字段不存在或不是字符串")
+		}
+	} else {
+		log.Printf("[knowledge] 无法解析为对象: %v", err)
+	}
+
+	// 尝试解析AI返回的JSON字符串
+	var questions []map[string]interface{}
+
+	// 清理可能的markdown代码块标记
+	cleanResult := result
+	if strings.HasPrefix(result, "```json") {
+		cleanResult = strings.TrimPrefix(result, "```json")
+		cleanResult = strings.TrimSuffix(cleanResult, "```")
+		cleanResult = strings.TrimSpace(cleanResult)
+		log.Printf("[knowledge] 清理了markdown json标记")
+	} else if strings.HasPrefix(result, "```") {
+		cleanResult = strings.TrimPrefix(result, "```")
+		cleanResult = strings.TrimSuffix(cleanResult, "```")
+		cleanResult = strings.TrimSpace(cleanResult)
+		log.Printf("[knowledge] 清理了markdown标记")
+	}
+
+	log.Printf("[knowledge] 准备解析的内容(前100字符): %s", cleanResult[:min(100, len(cleanResult))])
+
+	if err := json.Unmarshal([]byte(cleanResult), &questions); err != nil {
+		// 解析失败，记录日志并返回错误
+		log.Printf("[knowledge] 解析AI返回的JSON失败: %v", err)
+		log.Printf("[knowledge] 清理后内容(前200字符): %s", cleanResult[:min(200, len(cleanResult))])
+		InternalError(c, "AI返回的数据格式错误，请检查AI服务配置")
+		return
+	}
+
+	log.Printf("[knowledge] 成功解析，题目数量: %d", len(questions))
+
+	// 返回解析后的数组
+	Success(c, questions)
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }

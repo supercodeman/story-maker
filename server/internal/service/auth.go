@@ -79,11 +79,16 @@ func (s *AuthService) Register(req *RegisterRequest) (*model.User, error) {
 		return nil, errors.New("failed to hash password")
 	}
 
+	now := time.Now()
 	user := &model.User{
-		Username:     req.Username,
-		Email:        req.Email,
-		PasswordHash: string(hashedPassword),
-		Role:         "creator",
+		Username:      req.Username,
+		Email:         req.Email,
+		PasswordHash:  string(hashedPassword),
+		Role:          "admin",
+		WriterLevel:   model.WriterLevelAdvanced,
+		ViewMode:      model.ViewModeAdvanced,
+		LevelSource:   model.LevelSourceAdmin,
+		LevelUnlockAt: &now,
 	}
 
 	if err := s.userDAO.CreateUser(user); err != nil {

@@ -489,6 +489,8 @@ func (s *ModelRegistryService) setProviderKey(provider agent.AIProvider, apiKey 
 		p.SetAPIKey(apiKey)
 	case *agent.KimiProvider:
 		p.SetAPIKey(apiKey)
+	case *agent.MinimaxProvider:
+		p.SetAPIKey(apiKey)
 	}
 }
 
