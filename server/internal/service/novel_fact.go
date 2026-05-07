@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"log"
 
-	"ai-curton/server/internal/agent"
-	"ai-curton/server/internal/dao"
-	"ai-curton/server/internal/model"
-	"ai-curton/server/internal/vectordb"
+	"story-maker/server/internal/agent"
+	"story-maker/server/internal/dao"
+	"story-maker/server/internal/model"
+	"story-maker/server/internal/vectordb"
 )
 
 // NovelFactService 小说动态记忆事实服务（统一门面）

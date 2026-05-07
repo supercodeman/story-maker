@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"text/template"
 
-	"ai-curton/server/internal/dao"
-	"ai-curton/server/internal/model"
+	"story-maker/server/internal/dao"
+	"story-maker/server/internal/model"
 )
 
 // PromptTemplateService Prompt 模板业务逻辑层

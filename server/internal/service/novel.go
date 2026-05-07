@@ -12,9 +12,9 @@ import (
 
 	"log"
 
-	"ai-curton/server/internal/agent"
-	"ai-curton/server/internal/dao"
-	"ai-curton/server/internal/model"
+	"story-maker/server/internal/agent"
+	"story-maker/server/internal/dao"
+	"story-maker/server/internal/model"
 )
 
 // NovelService 小说工坊业务逻辑层

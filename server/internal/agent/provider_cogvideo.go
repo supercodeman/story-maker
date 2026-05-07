@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"time"
 
-	"ai-curton/server/internal/storage"
+	"story-maker/server/internal/storage"
 )
 
 // CogVideoProvider 智谱 CogVideoX 视频生成 Provider

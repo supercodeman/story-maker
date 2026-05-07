@@ -10,7 +10,7 @@ import (
 	"strings"
 	"sync"
 
-	"ai-curton/server/internal/model"
+	"story-maker/server/internal/model"
 )
 
 // FallbackEntry 降级链条目

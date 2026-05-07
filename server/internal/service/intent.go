@@ -5,7 +5,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"ai-curton/server/internal/dao"
+	"story-maker/server/internal/dao"
 )
 
 // WritingIntent 创作意图推断结果

@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"ai-curton/server/config"
+	"story-maker/server/config"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"

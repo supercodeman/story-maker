@@ -8,9 +8,9 @@ import (
 	"log"
 	"strings"
 
-	"ai-curton/server/internal/agent"
-	"ai-curton/server/internal/dao"
-	"ai-curton/server/internal/model"
+	"story-maker/server/internal/agent"
+	"story-maker/server/internal/dao"
+	"story-maker/server/internal/model"
 )
 
 // KnowledgeService 知识库业务逻辑层

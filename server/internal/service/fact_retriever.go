@@ -7,10 +7,10 @@ import (
 	"log"
 	"strings"
 
-	"ai-curton/server/internal/agent"
-	"ai-curton/server/internal/dao"
-	"ai-curton/server/internal/model"
-	"ai-curton/server/internal/vectordb"
+	"story-maker/server/internal/agent"
+	"story-maker/server/internal/dao"
+	"story-maker/server/internal/model"
+	"story-maker/server/internal/vectordb"
 )
 
 // FactRetriever 事实召回器，从 Milvus 检索相关事实并格式化注入 prompt

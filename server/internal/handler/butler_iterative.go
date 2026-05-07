@@ -3,7 +3,7 @@
 package handler
 
 import (
-	"ai-curton/server/internal/service"
+	"story-maker/server/internal/service"
 
 	"github.com/gin-gonic/gin"
 )

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# AI-Curton 停止脚本
+# Story-Maker 停止脚本
 
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -10,7 +10,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOG_DIR="$SCRIPT_DIR/logs"
 
 echo "========================================"
-echo "  AI-Curton 停止脚本"
+echo "  Story-Maker 停止脚本"
 echo "========================================"
 
 stop_service() {
@@ -39,7 +39,7 @@ stop_service() {
 stop_service "后端服务" "$LOG_DIR/server.pid" 8080
 stop_service "前端服务" "$LOG_DIR/web.pid" 3000
 
-rm -f "$LOG_DIR/ai-curton-server"
+rm -f "$LOG_DIR/story-maker-server"
 
 echo ""
 echo -e "${GREEN}所有服务已停止${NC}"

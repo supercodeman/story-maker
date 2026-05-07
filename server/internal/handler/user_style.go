@@ -5,8 +5,8 @@ import (
 	"errors"
 	"strconv"
 
-	"ai-curton/server/internal/model"
-	"ai-curton/server/internal/service"
+	"story-maker/server/internal/model"
+	"story-maker/server/internal/service"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"

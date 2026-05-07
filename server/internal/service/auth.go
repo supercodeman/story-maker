@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"time"
 
-	"ai-curton/server/config"
-	"ai-curton/server/internal/dao"
-	"ai-curton/server/internal/model"
+	"story-maker/server/config"
+	"story-maker/server/internal/dao"
+	"story-maker/server/internal/model"
 
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"

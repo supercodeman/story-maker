@@ -219,7 +219,7 @@ router.beforeEach(async (to, _from, next) => {
 
   // 设置页面标题
   if (to.meta.title) {
-    document.title = `${to.meta.title} | Ai-Curton`
+    document.title = `${to.meta.title} | Story-Maker`
   }
 })
 

@@ -5,10 +5,10 @@ import (
 	"context"
 	"errors"
 
-	"ai-curton/server/config"
-	"ai-curton/server/internal/dao"
-	"ai-curton/server/internal/model"
-	"ai-curton/server/internal/util"
+	"story-maker/server/config"
+	"story-maker/server/internal/dao"
+	"story-maker/server/internal/model"
+	"story-maker/server/internal/util"
 )
 
 // APIKeyService API Key 服务层，负责加密存储和解密读取

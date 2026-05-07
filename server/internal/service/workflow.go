@@ -11,11 +11,11 @@ import (
 	"sync"
 	"time"
 
-	"ai-curton/server/internal/agent"
-	"ai-curton/server/internal/agent/orchestrator"
-	"ai-curton/server/internal/agent/tools"
-	"ai-curton/server/internal/dao"
-	"ai-curton/server/internal/model"
+	"story-maker/server/internal/agent"
+	"story-maker/server/internal/agent/orchestrator"
+	"story-maker/server/internal/agent/tools"
+	"story-maker/server/internal/dao"
+	"story-maker/server/internal/model"
 )
 
 // WorkflowService 工作流服务层

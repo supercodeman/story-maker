@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"log"
 
-	"ai-curton/server/internal/agent"
-	"ai-curton/server/internal/dao"
-	"ai-curton/server/internal/model"
+	"story-maker/server/internal/agent"
+	"story-maker/server/internal/dao"
+	"story-maker/server/internal/model"
 )
 
 // SuggestionService 联想生成服务

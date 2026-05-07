@@ -3,7 +3,7 @@
 services:
   mysql:
     image: mysql:8.0
-    container_name: ai-curton-mysql
+    container_name: story-maker-mysql
     restart: unless-stopped
     ports:
       - "3306:3306"
@@ -23,7 +23,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: ai-curton-redis
+    container_name: story-maker-redis
     restart: unless-stopped
     ports:
       - "6379:6379"
@@ -40,7 +40,7 @@ services:
     build:
       context: ./server
       dockerfile: Dockerfile
-    container_name: ai-curton-server
+    container_name: story-maker-server
     restart: unless-stopped
     ports:
       - "8080:8080"

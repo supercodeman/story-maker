@@ -4,8 +4,8 @@ package service
 import (
 	"errors"
 
-	"ai-curton/server/internal/dao"
-	"ai-curton/server/internal/model"
+	"story-maker/server/internal/dao"
+	"story-maker/server/internal/model"
 )
 
 // PortfolioService 作品集业务逻辑层

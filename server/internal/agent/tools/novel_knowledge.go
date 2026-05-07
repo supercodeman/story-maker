@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"strings"
 
-	"ai-curton/server/internal/agent"
-	"ai-curton/server/internal/dao"
-	"ai-curton/server/internal/model"
+	"story-maker/server/internal/agent"
+	"story-maker/server/internal/dao"
+	"story-maker/server/internal/model"
 )
 
 // NewNovelKnowledgeTools 创建小说知识库工具集（按 novelID 绑定）

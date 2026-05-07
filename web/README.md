@@ -1,4 +1,4 @@
-# Ai-Curton Web Frontend
+# Story-Maker Web Frontend
 
 Vue 3 + TypeScript + Vite 前端项目
 

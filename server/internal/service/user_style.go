@@ -8,9 +8,9 @@ import (
 	"log"
 	"strings"
 
-	"ai-curton/server/internal/agent"
-	"ai-curton/server/internal/dao"
-	"ai-curton/server/internal/model"
+	"story-maker/server/internal/agent"
+	"story-maker/server/internal/dao"
+	"story-maker/server/internal/model"
 )
 
 // UserStyleService 用户风格业务逻辑层

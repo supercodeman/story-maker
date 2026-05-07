@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"log"
 
-	"ai-curton/server/internal/agent"
-	"ai-curton/server/internal/dao"
-	"ai-curton/server/internal/model"
+	"story-maker/server/internal/agent"
+	"story-maker/server/internal/dao"
+	"story-maker/server/internal/model"
 )
 
 // WorldBuildingService 世界构建服务，负责多阶段反思循环（生成→审查→优化）

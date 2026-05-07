@@ -11,7 +11,7 @@ import (
 	"net/http"
 	"time"
 
-	"ai-curton/server/internal/storage"
+	"story-maker/server/internal/storage"
 )
 
 // MiniMaxTTSProvider MiniMax 文本转语音 Provider

@@ -9,8 +9,8 @@ import (
 	"log"
 	"strings"
 
-	"ai-curton/server/internal/agent"
-	"ai-curton/server/internal/model"
+	"story-maker/server/internal/agent"
+	"story-maker/server/internal/model"
 )
 
 // AISearchProvider 利用 AI 模型生成小说推荐（兜底 Provider）

@@ -9,9 +9,9 @@ import (
 	"io"
 	"time"
 
-	"ai-curton/server/internal/dao"
-	"ai-curton/server/internal/model"
-	"ai-curton/server/internal/storage"
+	"story-maker/server/internal/dao"
+	"story-maker/server/internal/model"
+	"story-maker/server/internal/storage"
 )
 
 // AssetService 资源业务逻辑层

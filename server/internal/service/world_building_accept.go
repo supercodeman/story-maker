@@ -7,7 +7,7 @@ import (
 	"log"
 	"strings"
 
-	"ai-curton/server/internal/model"
+	"story-maker/server/internal/model"
 )
 
 // ========== JSON 提取工具 ==========

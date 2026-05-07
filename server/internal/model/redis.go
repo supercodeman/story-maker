@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"ai-curton/server/config"
+	"story-maker/server/config"
 
 	"github.com/redis/go-redis/v9"
 )

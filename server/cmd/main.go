@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"log"
 
-	"ai-curton/server/config"
-	"ai-curton/server/internal/model"
-	"ai-curton/server/internal/router"
+	"story-maker/server/config"
+	"story-maker/server/internal/model"
+	"story-maker/server/internal/router"
 
 	"github.com/gin-gonic/gin"
 )

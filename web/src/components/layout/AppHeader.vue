@@ -4,7 +4,7 @@
     <div class="app-header__left">
       <div class="app-header__logo">
         <span class="logo-icon">✨</span>
-        <span class="logo-text">Ai-Curton</span>
+        <span class="logo-text">Story-Maker</span>
       </div>
 
       <el-select

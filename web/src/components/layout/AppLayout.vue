@@ -13,7 +13,7 @@
         <span class="status-dot" :class="{ 'status-dot--online': wsConnected }"></span>
         {{ wsConnected ? '已连接' : '未连接' }}
       </span>
-      <span class="footer-info">Ai-Curton v1.0.0</span>
+      <span class="footer-info">Story-Maker v1.0.0</span>
     </div>
   </div>
 </template>

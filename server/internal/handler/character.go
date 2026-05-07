@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"strconv"
 
-	"ai-curton/server/internal/service"
-	"ai-curton/server/internal/storage"
+	"story-maker/server/internal/service"
+	"story-maker/server/internal/storage"
 
 	"github.com/gin-gonic/gin"
 )

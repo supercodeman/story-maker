@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# AI-Curton 服务状态检查脚本
+# Story-Maker 服务状态检查脚本
 
 echo "========================================"
-echo "  AI-Curton 服务状态检查"
+echo "  Story-Maker 服务状态检查"
 echo "========================================"
 echo ""
 

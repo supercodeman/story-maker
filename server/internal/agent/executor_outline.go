@@ -9,7 +9,7 @@ import (
 	"regexp"
 	"strings"
 
-	"ai-curton/server/internal/model"
+	"story-maker/server/internal/model"
 )
 
 // OutlineTaskExecutor 大纲生成任务执行器（outline_generate）

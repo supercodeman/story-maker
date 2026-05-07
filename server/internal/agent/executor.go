@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"ai-curton/server/internal/model"
+	"story-maker/server/internal/model"
 )
 
 // ExecContext 封装 Executor 需要的所有依赖

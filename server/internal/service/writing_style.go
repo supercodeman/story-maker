@@ -7,8 +7,8 @@ import (
 	"log"
 	"strings"
 
-	"ai-curton/server/internal/dao"
-	"ai-curton/server/internal/model"
+	"story-maker/server/internal/dao"
+	"story-maker/server/internal/model"
 
 	"gorm.io/gorm"
 )

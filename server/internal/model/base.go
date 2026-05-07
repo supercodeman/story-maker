@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"ai-curton/server/config"
+	"story-maker/server/config"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"

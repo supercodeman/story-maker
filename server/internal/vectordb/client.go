@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log"
 
-	"ai-curton/server/config"
+	"story-maker/server/config"
 
 	"github.com/milvus-io/milvus-sdk-go/v2/client"
 )

@@ -4,7 +4,7 @@
     <div class="auth-container">
       <GlowCard class="auth-card">
         <div class="auth-header">
-          <h1 class="auth-title">✨ Ai-Curton</h1>
+          <h1 class="auth-title">✨ Story-Maker</h1>
           <p class="auth-subtitle">AI 漫画创作工坊</p>
         </div>
 

@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	"ai-curton/server/internal/model"
+	"story-maker/server/internal/model"
 )
 
 // ChapterTaskExecutor 章节任务执行器（chapter_summary_polish / chapter_polish / chapter_expand / chapter_continue）

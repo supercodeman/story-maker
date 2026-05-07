@@ -5,7 +5,7 @@ import (
 	"context"
 	"time"
 
-	"ai-curton/server/internal/model"
+	"story-maker/server/internal/model"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )

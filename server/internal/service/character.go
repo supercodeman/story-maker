@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 
-	"ai-curton/server/internal/dao"
-	"ai-curton/server/internal/model"
+	"story-maker/server/internal/dao"
+	"story-maker/server/internal/model"
 )
 
 // CharacterService 角色业务逻辑层

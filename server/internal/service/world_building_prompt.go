@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"ai-curton/server/internal/model"
+	"story-maker/server/internal/model"
 )
 
 // ========== Prompt 构建（WorldBuildingService 的私有方法） ==========

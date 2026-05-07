@@ -4,7 +4,7 @@ package dao
 import (
 	"errors"
 
-	"ai-curton/server/internal/model"
+	"story-maker/server/internal/model"
 
 	"gorm.io/gorm"
 )

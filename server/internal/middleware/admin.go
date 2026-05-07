@@ -4,7 +4,7 @@ package middleware
 import (
 	"net/http"
 
-	"ai-curton/server/internal/model"
+	"story-maker/server/internal/model"
 
 	"github.com/gin-gonic/gin"
 )

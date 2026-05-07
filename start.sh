@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# AI-Curton 一键启动脚本
+# Story-Maker 一键启动脚本
 
 set -euo pipefail
 
@@ -20,7 +20,7 @@ HEALTH_TIMEOUT=60
 mkdir -p "$LOG_DIR"
 
 echo "========================================"
-echo "  AI-Curton 一键启动脚本"
+echo "  Story-Maker 一键启动脚本"
 echo "========================================"
 
 # 检查依赖服务
@@ -47,12 +47,12 @@ fi
 echo ""
 echo -e "${BLUE}编译后端服务...${NC}"
 cd "$SCRIPT_DIR/server"
-$GO_BIN build -o "$SCRIPT_DIR/logs/ai-curton-server" ./cmd/main.go
+$GO_BIN build -o "$SCRIPT_DIR/logs/story-maker-server" ./cmd/main.go
 echo -e "${GREEN}✓ 编译完成${NC}"
 
 # 启动后端
 echo -e "${BLUE}启动后端服务...${NC}"
-"$LOG_DIR/ai-curton-server" > "$LOG_DIR/server.log" 2>&1 &
+"$LOG_DIR/story-maker-server" > "$LOG_DIR/server.log" 2>&1 &
 SERVER_PID=$!
 echo $SERVER_PID > "$LOG_DIR/server.pid"
 

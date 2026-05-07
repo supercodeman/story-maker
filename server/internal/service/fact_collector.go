@@ -8,10 +8,10 @@ import (
 	"log"
 	"strings"
 
-	"ai-curton/server/internal/agent"
-	"ai-curton/server/internal/dao"
-	"ai-curton/server/internal/model"
-	"ai-curton/server/internal/vectordb"
+	"story-maker/server/internal/agent"
+	"story-maker/server/internal/dao"
+	"story-maker/server/internal/model"
+	"story-maker/server/internal/vectordb"
 )
 
 // FactCollector 事实采集器，从章节内容中提取结构化事实

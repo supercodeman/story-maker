@@ -1,4 +1,4 @@
-module ai-curton/server
+module story-maker/server
 
 go 1.22
 

@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"ai-curton/server/internal/agent"
+	"story-maker/server/internal/agent"
 
 	"github.com/go-resty/resty/v2"
 )

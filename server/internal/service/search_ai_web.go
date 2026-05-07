@@ -10,8 +10,8 @@ import (
 	"log"
 	"strings"
 
-	"ai-curton/server/internal/agent"
-	"ai-curton/server/internal/model"
+	"story-maker/server/internal/agent"
+	"story-maker/server/internal/model"
 )
 
 // AIWebSearchProvider 利用 AI 模型的联网搜索能力搜索小说
