@@ -5,6 +5,7 @@ import { useWorkflowStore } from '@/store/workflow'
 import { useKnowledgeStore } from '@/store/knowledge'
 import { useOverviewStore } from '@/store/overview'
 import { useMemoryStore } from '@/store/memory'
+import { useComicDramaStore } from '@/store/comicDrama'
 
 let ws: WebSocket | null = null
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null
@@ -81,6 +82,10 @@ export function connectWebSocket() {
       if (msg.type === 'token_update' && msg.data) {
         const novelStore = useNovelStore()
         novelStore.handleTokenUpdate(msg.data)
+      }
+      if (msg.type === 'comic_drama_stage_done' && msg.data) {
+        const comicDramaStore = useComicDramaStore()
+        comicDramaStore.handleStageDone(msg.data)
       }
     } catch (e) {
       console.error('Failed to parse WS message:', e)

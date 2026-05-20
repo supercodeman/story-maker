@@ -140,3 +140,44 @@ func (s *AssetService) Delete(ctx context.Context, assetID, userID uint) error {
 func timePrefix() string {
 	return time.Now().Format("20060102150405")
 }
+
+// SetCharacterRef 设为角色参考图（同一 portfolio 只保留一张）
+func (s *AssetService) SetCharacterRef(ctx context.Context, assetID, userID uint) error {
+	a, err := s.assetDAO.GetByID(assetID)
+	if err != nil {
+		return err
+	}
+	if a.Type != model.AssetTypeImage {
+		return errors.New("only image assets can be set as character reference")
+	}
+
+	p, err := s.portfolioDAO.GetByID(a.PortfolioID)
+	if err != nil {
+		return err
+	}
+	ok, err := s.workspaceDAO.CheckPermission(p.WorkspaceID, userID, model.WorkspaceRoleEditor)
+	if err != nil || !ok {
+		return errors.New("access denied: editor permission required")
+	}
+
+	return s.assetDAO.SetCharacterRef(assetID, a.PortfolioID)
+}
+
+// UnsetCharacterRef 取消角色参考图
+func (s *AssetService) UnsetCharacterRef(ctx context.Context, assetID, userID uint) error {
+	a, err := s.assetDAO.GetByID(assetID)
+	if err != nil {
+		return err
+	}
+
+	p, err := s.portfolioDAO.GetByID(a.PortfolioID)
+	if err != nil {
+		return err
+	}
+	ok, err := s.workspaceDAO.CheckPermission(p.WorkspaceID, userID, model.WorkspaceRoleEditor)
+	if err != nil || !ok {
+		return errors.New("access denied: editor permission required")
+	}
+
+	return s.assetDAO.UnsetCharacterRef(assetID)
+}

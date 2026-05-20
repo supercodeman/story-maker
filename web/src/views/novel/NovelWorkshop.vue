@@ -244,6 +244,13 @@
             <el-button type="danger" text @click="handleDeleteChapter">删除章节</el-button>
           </div>
 
+          <!-- 章节插图画廊 -->
+          <ImageGenerator
+            :chapter-id="novelStore.currentChapter?.id || 0"
+            :chapter-content="editContent"
+            :portfolio-id="Number(pid)"
+          />
+
         </template>
         <div v-else class="editor-area__empty">
           从左侧面板选择一个章节开始编辑
@@ -644,6 +651,7 @@ import WritingStylePanel from './WritingStylePanel.vue'
 import MemoryBindingPanel from './MemoryBindingPanel.vue'
 import ExpandChapterDialog from './ExpandChapterDialog.vue'
 import ChapterMediaPanel from './ChapterMediaPanel.vue'
+import ImageGenerator from './ImageGenerator.vue'
 import ExportDialog from './ExportDialog.vue'
 import InlineSuggestionEditor from '@/components/editor/InlineSuggestionEditor.vue'
 import ContentDiffView from '@/components/editor/ContentDiffView.vue'

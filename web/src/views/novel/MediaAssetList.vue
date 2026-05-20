@@ -15,7 +15,7 @@
         <!-- 音频播放器 -->
         <audio
           v-if="asset.type === 'audio'"
-          :src="asset.file_path"
+          :src="`/uploads/${asset.file_path}`"
           controls
           preload="none"
           class="media-asset-item__player"
@@ -23,7 +23,7 @@
         <!-- 视频播放器 -->
         <video
           v-if="asset.type === 'video'"
-          :src="asset.file_path"
+          :src="`/uploads/${asset.file_path}`"
           controls
           preload="none"
           class="media-asset-item__video"

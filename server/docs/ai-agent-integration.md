@@ -115,6 +115,6 @@ ai:
 运行测试脚本：
 
 ```bash
-cd /Users/sangchenglong/tmp/Ai-curton/server
+cd /Users/sangchenglong/go/src/story-maker/server
 ./scripts/test_api.sh
 ```

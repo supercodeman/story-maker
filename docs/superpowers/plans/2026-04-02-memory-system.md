@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 为 Ai-curton 实现分层记忆能力——P1 会话管理、P2 Redis 缓存 + 历史压缩、P3 长期记忆提取。
+**Goal:** 为 story-maker 实现分层记忆能力——P1 会话管理、P2 Redis 缓存 + 历史压缩、P3 长期记忆提取。
 
 **Architecture:** 新增 Conversation/Message/MemoryEntry 三个模型，通过 ConversationService 统一管理对话生命周期。MemoryService 负责 Redis 缓存加速、历史压缩摘要、长期记忆提取。发消息时由 MemoryService.BuildContext() 组装完整上下文（长期记忆 + 摘要 + 最近消息 + 当前 Prompt）再交给 Dispatcher 执行。
 
@@ -118,7 +118,7 @@ func autoMigrate() error {
 
 - [ ] **Step 3: 验证编译通过**
 
-Run: `cd /Users/sangchenglong/go/src/Ai-curton/server && go build ./...`
+Run: `cd /Users/sangchenglong/go/src/story-maker/server && go build ./...`
 Expected: 编译成功，无错误
 
 - [ ] **Step 4: Commit**
@@ -145,7 +145,7 @@ package dao
 import (
 	"context"
 
-	"ai-curton/server/internal/model"
+	"story-maker/server/internal/model"
 	"gorm.io/gorm"
 )
 
@@ -204,7 +204,7 @@ package dao
 import (
 	"context"
 
-	"ai-curton/server/internal/model"
+	"story-maker/server/internal/model"
 	"gorm.io/gorm"
 )
 
@@ -262,7 +262,7 @@ func (d *MessageDAO) DeleteBatch(ctx context.Context, ids []uint) error {
 
 - [ ] **Step 3: 验证编译通过**
 
-Run: `cd /Users/sangchenglong/go/src/Ai-curton/server && go build ./...`
+Run: `cd /Users/sangchenglong/go/src/story-maker/server && go build ./...`
 Expected: 编译成功
 
 - [ ] **Step 4: Commit**
@@ -328,9 +328,9 @@ import (
 	"errors"
 	"fmt"
 
-	"ai-curton/server/internal/agent"
-	"ai-curton/server/internal/dao"
-	"ai-curton/server/internal/model"
+	"story-maker/server/internal/agent"
+	"story-maker/server/internal/dao"
+	"story-maker/server/internal/model"
 )
 
 // ConversationService 会话服务层
@@ -525,7 +525,7 @@ func estimateTokens(text string) int {
 
 - [ ] **Step 3: 验证编译通过**
 
-Run: `cd /Users/sangchenglong/go/src/Ai-curton/server && go build ./...`
+Run: `cd /Users/sangchenglong/go/src/story-maker/server && go build ./...`
 Expected: 编译成功
 
 - [ ] **Step 4: Commit**

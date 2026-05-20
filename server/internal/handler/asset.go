@@ -142,3 +142,39 @@ func (h *AssetHandler) Delete(c *gin.Context) {
 
 	Success(c, gin.H{"message": "asset deleted"})
 }
+
+// SetCharacterRef 设为角色参考图
+// PUT /api/v1/assets/:id/set-character-ref
+func (h *AssetHandler) SetCharacterRef(c *gin.Context) {
+	userID := c.GetUint("user_id")
+	aID, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		BadRequest(c, "invalid asset id")
+		return
+	}
+
+	if err := h.svc.SetCharacterRef(c.Request.Context(), uint(aID), userID); err != nil {
+		Error(c, http.StatusForbidden, err.Error())
+		return
+	}
+
+	Success(c, gin.H{"message": "character reference set"})
+}
+
+// UnsetCharacterRef 取消角色参考图
+// PUT /api/v1/assets/:id/unset-character-ref
+func (h *AssetHandler) UnsetCharacterRef(c *gin.Context) {
+	userID := c.GetUint("user_id")
+	aID, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		BadRequest(c, "invalid asset id")
+		return
+	}
+
+	if err := h.svc.UnsetCharacterRef(c.Request.Context(), uint(aID), userID); err != nil {
+		Error(c, http.StatusForbidden, err.Error())
+		return
+	}
+
+	Success(c, gin.H{"message": "character reference unset"})
+}

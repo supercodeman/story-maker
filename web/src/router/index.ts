@@ -98,6 +98,20 @@ const routes: RouteRecordRaw[] = [
         props: true,
       },
       {
+        path: 'workspace/:id/portfolio/:pid/comic-drama',
+        name: 'ComicDramaList',
+        component: () => import('@/views/comic-drama/ComicDramaList.vue'),
+        meta: { title: 'Comic Drama' },
+        props: true,
+      },
+      {
+        path: 'workspace/:id/portfolio/:pid/comic-drama/:dramaId',
+        name: 'ComicDramaDetail',
+        component: () => import('@/views/comic-drama/ComicDramaDetail.vue'),
+        meta: { title: 'Comic Drama Detail' },
+        props: true,
+      },
+      {
         path: 'settings/apikeys',
         name: 'APIKeyManage',
         component: () => import('@/views/settings/APIKeyManage.vue'),

@@ -125,6 +125,9 @@ func Setup() *gin.Engine {
 		dispatcher.RegisterImageGenProvider(imageGenProvider, dao.NewAssetDAO())
 	}
 
+	// 注册漫剧多模态 executor（依赖 TTS/Video/ImageGen Provider 已注册）
+	dispatcher.RegisterComicProviders()
+
 	// 初始化 Workflow DAO
 	workflowDAO := dao.NewAIWorkflowDAO(model.DB)
 
@@ -201,7 +204,8 @@ func Setup() *gin.Engine {
 
 	// 漫剧服务（需在 OnTaskCompleted 之前初始化，闭包引用 orchestrator）
 	comicDramaDAO := dao.NewComicDramaDAO(model.DB)
-	pipelineOrchestrator := service.NewPipelineOrchestrator(comicDramaDAO, aiTaskDAO, dispatcher, hub)
+	novelDAO := dao.NewNovelDAO()
+	pipelineOrchestrator := service.NewPipelineOrchestrator(comicDramaDAO, aiTaskDAO, novelDAO, dispatcher, hub)
 	comicDramaSvc := service.NewComicDramaService(comicDramaDAO)
 	comicDramaSvc.SetOrchestrator(pipelineOrchestrator)
 	comicDramaHandler := handler.NewComicDramaHandler(comicDramaSvc)

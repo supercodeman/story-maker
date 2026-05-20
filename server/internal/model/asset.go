@@ -12,6 +12,7 @@ type Asset struct {
 	Metadata    string    `gorm:"type:json" json:"metadata"`          // 生成参数、提示词等
 	Duration    float64   `gorm:"default:0" json:"duration"`          // 音频/视频时长（秒）
 	ChapterID   *uint     `gorm:"index" json:"chapter_id,omitempty"`  // 关联章节ID
+	Role        string    `gorm:"size:50;default:''" json:"role"`     // 角色标记：character_ref 等
 	CreatedBy   uint      `gorm:"index;not null" json:"created_by"`
 	CreatedAt   time.Time `json:"created_at"`
 }

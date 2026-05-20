@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ai-Curton 创意工坊 - 项目架构全景</title>
+<title>Story-Maker 创意工坊 - 项目架构全景</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#0f0f1a;color:#e2e8f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.6;overflow-x:hidden}
@@ -232,6 +232,72 @@ body.sidebar-collapsed{padding-left:52px}
 
 /* Hide old nav dots */
 .nav-dots{display:none}
+/* Harness Engineering */
+.harness-overview{display:grid;grid-template-columns:1fr 2fr;gap:24px;margin-bottom:30px}
+@media(max-width:768px){.harness-overview{grid-template-columns:1fr}}
+.harness-summary{border-radius:14px;padding:20px;background:linear-gradient(135deg,#1a1a2e,#0f0f1a);border:1px solid #4a9eff30}
+.harness-summary h3{font-size:.95rem;color:#60a5fa;margin-bottom:12px}
+.harness-summary p{font-size:.8rem;color:#94a3b8;line-height:1.7}
+.harness-layers{display:flex;flex-direction:column;gap:6px}
+.harness-layer{display:flex;align-items:center;gap:12px;padding:14px 18px;border-radius:12px;opacity:0;transform:translateX(-20px);transition:all .5s ease}
+.harness-layer.show{opacity:1;transform:translateX(0)}
+.harness-layer.l1{background:linear-gradient(135deg,#2a4a7f20,#1e3a5f30);border:1px solid #4a9eff40}
+.harness-layer.l2{background:linear-gradient(135deg,#4c1d9520,#3b076430);border:1px solid #a855f740}
+.harness-layer.l3{background:linear-gradient(135deg,#16653420,#14532d30);border:1px solid #22c55e40}
+.harness-layer .hl-icon{font-size:1.3rem;flex-shrink:0}
+.harness-layer .hl-content{flex:1}
+.harness-layer .hl-name{font-size:.85rem;font-weight:700;margin-bottom:2px}
+.harness-layer.l1 .hl-name{color:#60a5fa}
+.harness-layer.l2 .hl-name{color:#c084fc}
+.harness-layer.l3 .hl-name{color:#4ade80}
+.harness-layer .hl-desc{font-size:.75rem;color:#6b7280;font-family:monospace}
+
+.harness-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:30px}
+@media(max-width:900px){.harness-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){.harness-grid{grid-template-columns:1fr}}
+.harness-card{border-radius:14px;padding:18px;opacity:0;transform:scale(0.85);transition:all .5s ease;position:relative;overflow:hidden}
+.harness-card.show{opacity:1;transform:scale(1)}
+.harness-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.harness-card.hc1{background:linear-gradient(135deg,#0f1a2e,#1a2540);border:1px solid #4a9eff30}
+.harness-card.hc1::before{background:linear-gradient(90deg,#4a9eff,#60a5fa)}
+.harness-card.hc2{background:linear-gradient(135deg,#1a0f2e,#251540);border:1px solid #a855f730}
+.harness-card.hc2::before{background:linear-gradient(90deg,#a855f7,#c084fc)}
+.harness-card.hc3{background:linear-gradient(135deg,#0f1a12,#152015);border:1px solid #22c55e30}
+.harness-card.hc3::before{background:linear-gradient(90deg,#22c55e,#4ade80)}
+.harness-card.hc4{background:linear-gradient(135deg,#1a1a0f,#25200f);border:1px solid #f59e0b30}
+.harness-card.hc4::before{background:linear-gradient(90deg,#f59e0b,#fbbf24)}
+.harness-card.hc5{background:linear-gradient(135deg,#1a0f1a,#250f20);border:1px solid #ec489930}
+.harness-card.hc5::before{background:linear-gradient(90deg,#ec4899,#f472b6)}
+.harness-card.hc6{background:linear-gradient(135deg,#1a1a1a,#252525);border:1px solid #64748b30}
+.harness-card.hc6::before{background:linear-gradient(90deg,#64748b,#94a3b8)}
+.harness-card .hc-title{font-size:.85rem;font-weight:700;margin-bottom:8px}
+.harness-card.hc1 .hc-title{color:#60a5fa}
+.harness-card.hc2 .hc-title{color:#c084fc}
+.harness-card.hc3 .hc-title{color:#4ade80}
+.harness-card.hc4 .hc-title{color:#fbbf24}
+.harness-card.hc5 .hc-title{color:#f472b6}
+.harness-card.hc6 .hc-title{color:#94a3b8}
+.harness-card .hc-desc{font-size:.75rem;color:#94a3b8;margin-bottom:8px;line-height:1.5}
+.harness-card .hc-file{font-size:.7rem;color:#475569;font-family:monospace}
+
+.harness-flow{display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:30px;padding:20px;border:1px solid #1e293b;border-radius:14px;background:#0a0a1540}
+.harness-flow-title{font-size:.9rem;color:#94a3b8;margin-bottom:12px;text-align:center}
+.hf-row{display:flex;align-items:center;gap:10px;justify-content:center;flex-wrap:wrap}
+.hf-node{padding:10px 16px;border-radius:10px;font-size:.8rem;font-weight:600;text-align:center;opacity:0;transform:scale(0.7);transition:all .5s ease;min-width:100px}
+.hf-node.show{opacity:1;transform:scale(1)}
+.hf-node.n-task{background:#4c1d9540;border:1px solid #a855f740;color:#c084fc}
+.hf-node.n-dispatch{background:#2a4a7f40;border:1px solid #4a9eff40;color:#60a5fa}
+.hf-node.n-cap{background:#92400e40;border:1px solid #f59e0b40;color:#fbbf24}
+.hf-node.n-exec{background:#16653440;border:1px solid #22c55e40;color:#4ade80}
+.hf-node.n-provider{background:#83184340;border:1px solid #ec489940;color:#f472b6}
+.hf-node.n-persist{background:#1e293b;border:1px solid #64748b40;color:#94a3b8}
+.hf-arrow{color:#475569;font-size:1.1rem;opacity:0;transition:opacity .4s}
+.hf-arrow.show{opacity:1}
+
+.harness-tension{margin-top:24px;padding:16px 20px;border-radius:12px;background:#991b1b15;border:1px solid #ef444430}
+.harness-tension .ht-title{font-size:.85rem;font-weight:700;color:#fca5a5;margin-bottom:8px}
+.harness-tension .ht-list{list-style:none;font-size:.78rem;color:#94a3b8;line-height:1.8}
+.harness-tension .ht-list li::before{content:'⚠ ';color:#f59e0b}
 </style>
 </head>
 <body>
@@ -239,7 +305,7 @@ body.sidebar-collapsed{padding-left:52px}
 <!-- Sidebar -->
 <aside class="sidebar" id="sidebar">
   <div class="sidebar__header">
-    <span class="sidebar__logo">Ai-Curton</span>
+    <span class="sidebar__logo">Story-Maker</span>
     <button class="sidebar__toggle" id="sidebarToggle" title="收起/展开">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <polyline points="15 18 9 12 15 6"></polyline>
@@ -256,6 +322,7 @@ body.sidebar-collapsed{padding-left:52px}
     <a class="sidebar__item" data-target="s7"><span class="sidebar__item-icon">🔄</span><span class="sidebar__item-text">数据流全景</span></a>
     <a class="sidebar__item" data-target="s8"><span class="sidebar__item-icon">🧠</span><span class="sidebar__item-text">RAG 与知识体系</span></a>
     <a class="sidebar__item" data-target="s9"><span class="sidebar__item-icon">✨</span><span class="sidebar__item-text">核心特性矩阵</span></a>
+    <a class="sidebar__item" data-target="s10"><span class="sidebar__item-icon">🔧</span><span class="sidebar__item-text">Harness Engineering</span></a>
   </nav>
   <div class="sidebar__footer">
     <div class="sidebar__footer-text">架构全景 v1.0</div>
@@ -273,6 +340,7 @@ body.sidebar-collapsed{padding-left:52px}
   <div class="nav-dot" data-target="s7" title="数据流"></div>
   <div class="nav-dot" data-target="s8" title="RAG 知识"></div>
   <div class="nav-dot" data-target="s9" title="特性矩阵"></div>
+  <div class="nav-dot" data-target="s10" title="Harness"></div>
 </div>
 
 <div class="container">
@@ -684,6 +752,146 @@ body.sidebar-collapsed{padding-left:52px}
     </div>
   </section>
 
+  <!-- Section 10: Harness Engineering -->
+  <section id="s10">
+    <div class="section-title">
+      <span class="icon" style="background:#1e293b">🔧</span>
+      Harness Engineering — 编排基础设施全景
+    </div>
+
+    <!-- 三层编排体系 -->
+    <div class="harness-overview">
+      <div class="harness-summary">
+        <h3>核心价值</h3>
+        <p>把「调哪个模型、怎么调、失败了怎么办」的复杂度封装在基础设施层。业务代码只需声明 <code style="background:#1e293b;padding:2px 6px;border-radius:4px;color:#4a9eff">taskType + prompt</code> 即可获得完整的执行保障：能力路由、三级降级、Token 预算、结果持久化、实时通知。</p>
+      </div>
+      <div class="harness-layers" id="harness-layers">
+        <div class="harness-layer l1">
+          <span class="hl-icon">🔀</span>
+          <div class="hl-content">
+            <div class="hl-name">DAG 工作流引擎</div>
+            <div class="hl-desc">拓扑排序 · 条件边 · 循环节点 · 层级并行 — orchestrator/engine.go</div>
+          </div>
+        </div>
+        <div class="harness-layer l2">
+          <span class="hl-icon">🎬</span>
+          <div class="hl-content">
+            <div class="hl-name">Pipeline 状态机</div>
+            <div class="hl-desc">多阶段串行推进 · 任务完成回调 · 阶段自动晋升 — service/comic_drama.go</div>
+          </div>
+        </div>
+        <div class="harness-layer l3">
+          <span class="hl-icon">📡</span>
+          <div class="hl-content">
+            <div class="hl-name">单任务分发器</div>
+            <div class="hl-desc">能力路由 · 三级 Fallback · 错误分类 · Token 计费 — agent/dispatcher.go</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Harness 模式卡片网格 -->
+    <div style="font-size:.9rem;color:#94a3b8;margin-bottom:14px;font-weight:600">15 种 Harness 模式</div>
+    <div class="harness-grid" id="harness-grid">
+      <div class="harness-card hc1">
+        <div class="hc-title">Provider 抽象层</div>
+        <div class="hc-desc">统一接口适配 5+ AI 模型 API，声明式能力注册，动态 API Key 注入</div>
+        <div class="hc-file">agent/provider.go · qwen.go · minimax.go</div>
+      </div>
+      <div class="harness-card hc2">
+        <div class="hc-title">Executor 插件注册</div>
+        <div class="hc-desc">TaskExecutor 接口 + Registry 映射，12+ 种执行器按 taskType 路由</div>
+        <div class="hc-file">agent/executor.go · executor_*.go</div>
+      </div>
+      <div class="harness-card hc3">
+        <div class="hc-title">能力路由 (Capability)</div>
+        <div class="hc-desc">taskType → Capability → Provider.Capabilities() 匹配，运行时动态选择</div>
+        <div class="hc-file">agent/dispatcher.go:taskTypeToCapability()</div>
+      </div>
+      <div class="harness-card hc4">
+        <div class="hc-title">Tool Registry</div>
+        <div class="hc-desc">插件式工具注册，LLM Function Calling 最多 5 轮，节点级工具注入</div>
+        <div class="hc-file">agent/tool.go · ToFunctionDefs()</div>
+      </div>
+      <div class="harness-card hc5">
+        <div class="hc-title">Token Budget Manager</div>
+        <div class="hc-desc">上下文窗口预算分配，History 反向裁剪，CJK/ASCII 混合估算</div>
+        <div class="hc-file">agent/token.go · TrimHistory()</div>
+      </div>
+      <div class="harness-card hc6">
+        <div class="hc-title">SharedState 通信</div>
+        <div class="hc-desc">RWMutex 线程安全状态池，DAG 节点间数据传递，Loop 轮次隔离</div>
+        <div class="hc-file">orchestrator/state.go · Snapshot()</div>
+      </div>
+      <div class="harness-card hc1">
+        <div class="hc-title">Model Registry</div>
+        <div class="hc-desc">DB 驱动模型健康状态，周期性探活，缓存可用性，降级链排序</div>
+        <div class="hc-file">service/model_registry.go</div>
+      </div>
+      <div class="harness-card hc2">
+        <div class="hc-title">Middleware Chain</div>
+        <div class="hc-desc">Auth · Logger · CORS · Recovery · Permission · Admin 六层中间件</div>
+        <div class="hc-file">middleware/*.go</div>
+      </div>
+      <div class="harness-card hc3">
+        <div class="hc-title">Composition Root</div>
+        <div class="hc-desc">router.go 集中组装：DAO → Service → Provider → Executor → Callback</div>
+        <div class="hc-file">router/router.go</div>
+      </div>
+      <div class="harness-card hc4">
+        <div class="hc-title">WebSocket Hub</div>
+        <div class="hc-desc">Hub 广播模式，任务完成/阶段推进/进度更新实时推送前端</div>
+        <div class="hc-file">handler/ws.go · Notifier 接口</div>
+      </div>
+      <div class="harness-card hc5">
+        <div class="hc-title">条件执行 (Conditional)</div>
+        <div class="hc-desc">DAG 条件边 + LoopNode 退出条件，运行时谓词决策分支</div>
+        <div class="hc-file">orchestrator/graph.go:EdgeConditional</div>
+      </div>
+      <div class="harness-card hc6">
+        <div class="hc-title">OnTaskDone Callback</div>
+        <div class="hc-desc">任务完成后触发：结果持久化 → Pipeline 推进 → Token 计费 → 通知</div>
+        <div class="hc-file">dispatcher.go · comic_drama.go</div>
+      </div>
+    </div>
+
+    <!-- 能力路由数据流 -->
+    <div class="harness-flow" id="harness-flow">
+      <div class="harness-flow-title">能力路由完整数据流 — 从业务调用到模型执行</div>
+      <div class="hf-row">
+        <div class="hf-node n-task">AITask<br><span style="font-size:.65rem;font-weight:400">taskType + prompt</span></div>
+        <div class="hf-arrow">→</div>
+        <div class="hf-node n-dispatch">Dispatcher<br><span style="font-size:.65rem;font-weight:400">ExecuteSingle()</span></div>
+        <div class="hf-arrow">→</div>
+        <div class="hf-node n-cap">Capability Check<br><span style="font-size:.65rem;font-weight:400">taskTypeToCapability()</span></div>
+        <div class="hf-arrow">→</div>
+        <div class="hf-node n-exec">Executor<br><span style="font-size:.65rem;font-weight:400">Registry.Get(type)</span></div>
+        <div class="hf-arrow">→</div>
+        <div class="hf-node n-provider">Provider<br><span style="font-size:.65rem;font-weight:400">GenerateText/Image</span></div>
+      </div>
+      <div style="margin-top:12px;display:flex;align-items:center;gap:8px;justify-content:center">
+        <span style="color:#475569;font-size:.9rem">↓ 完成</span>
+      </div>
+      <div class="hf-row" style="margin-top:8px">
+        <div class="hf-node n-persist">OnTaskDone<br><span style="font-size:.65rem;font-weight:400">persistResult()</span></div>
+        <div class="hf-arrow">→</div>
+        <div class="hf-node n-dispatch">Pipeline Advance<br><span style="font-size:.65rem;font-weight:400">AdvanceStage()</span></div>
+        <div class="hf-arrow">→</div>
+        <div class="hf-node n-task">WS Notify<br><span style="font-size:.65rem;font-weight:400">stage_done</span></div>
+      </div>
+    </div>
+
+    <!-- Tension 点 -->
+    <div class="harness-tension">
+      <div class="ht-title">当前 Tension 点</div>
+      <ul class="ht-list">
+        <li>comic_drama.go PipelineOrchestrator 承担过多职责（调度 + 持久化 + Prompt 构建），接近 500 行上限</li>
+        <li>DAG Engine 与 Pipeline Orchestrator 是两套独立编排，漫剧用 Pipeline 而非 DAG — 后续条件分支需统一</li>
+        <li>dispatcher.go 中 isMultiModalTask 硬编码判断，与 Executor Registry 动态注册存在概念冲突</li>
+      </ul>
+    </div>
+  </section>
+
   <div class="replay-wrap">
     <button class="replay-btn" onclick="replay()">重新播放</button>
   </div>
@@ -835,6 +1043,22 @@ body.sidebar-collapsed{padding-left:52px}
       case 's9':
         staggerShow('.feature-card', document.getElementById('feature-grid'), 120);
         break;
+      case 's10':
+        // Harness layers
+        staggerShow('.harness-layer', document.getElementById('harness-layers'), 300);
+        // Harness cards
+        setTimeout(function(){
+          staggerShow('.harness-card', document.getElementById('harness-grid'), 150);
+        },900);
+        // Flow nodes and arrows
+        setTimeout(function(){
+          var flow = document.getElementById('harness-flow');
+          var nodes = flow.querySelectorAll('.hf-node');
+          var arrows = flow.querySelectorAll('.hf-arrow');
+          nodes.forEach(function(n,i){setTimeout(function(){n.classList.add('show');},i*200);});
+          arrows.forEach(function(a,i){setTimeout(function(){a.classList.add('show');},i*200+100);});
+        },2400);
+        break;
     }
   }
 
@@ -842,8 +1066,8 @@ body.sidebar-collapsed{padding-left:52px}
   window.replay = function(){
     animated = {};
     document.querySelectorAll('section').forEach(function(s){s.classList.remove('visible');});
-    document.querySelectorAll('.stat-card,.layer-box,.flow-card,.agent-node,.dag-node,.fe-card,.timeline-step,.rag-phase,.feature-card,.fallback-step,.batch-node').forEach(function(e){e.classList.remove('show');});
-    document.querySelectorAll('.layer-arrow,.flow-arrow,.agent-arrows,.dag-arrows,.fallback-arrow,.rag-arrows,.rag-merge').forEach(function(e){e.classList.remove('show');});
+    document.querySelectorAll('.stat-card,.layer-box,.flow-card,.agent-node,.dag-node,.fe-card,.timeline-step,.rag-phase,.feature-card,.fallback-step,.batch-node,.harness-layer,.harness-card,.hf-node').forEach(function(e){e.classList.remove('show');});
+    document.querySelectorAll('.layer-arrow,.flow-arrow,.agent-arrows,.dag-arrows,.fallback-arrow,.rag-arrows,.rag-merge,.hf-arrow').forEach(function(e){e.classList.remove('show');});
     document.querySelectorAll('.sidebar__item').forEach(function(e){e.classList.remove('active');});
     // Reset backend-sub inline styles
     var subCards = document.getElementById('backend-sub').querySelectorAll('.flow-card');

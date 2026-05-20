@@ -348,7 +348,7 @@ package service
 
 import (
     "context"
-    "ai-curton/server/internal/agent"
+    "story-maker/server/internal/agent"
 )
 
 // AISearchProvider 利用已有 AI 模型能力生成小说推荐

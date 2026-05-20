@@ -137,12 +137,10 @@ func (d *Dispatcher) registerDefaultExecutors() {
 	d.executorRegistry.Register(model.TaskTypeRevisionAnalysis, text)
 	d.executorRegistry.Register(model.TaskTypeRevisionPlanning, text)
 
-	// 漫剧 Pipeline Executor
+	// 漫剧 Pipeline Executor（文本生成类，走 AIProvider）
 	d.executorRegistry.Register(model.TaskTypeComicScript, &ComicScriptExecutor{})
 	d.executorRegistry.Register(model.TaskTypeComicStoryboard, &ComicStoryboardExecutor{})
-	d.executorRegistry.Register(model.TaskTypeComicCharRef, &ComicCharRefExecutor{})
-	d.executorRegistry.Register(model.TaskTypeComicAudio, &ComicAudioExecutor{})
-	d.executorRegistry.Register(model.TaskTypeComicMedia, &ComicMediaExecutor{})
+	// 漫剧多模态 executor 需要在 Provider 注册后通过 RegisterComicProviders 方法注册
 	d.executorRegistry.Register(model.TaskTypeComicCompose, &ComicComposeExecutor{})
 
 	// 注意：audio_gen 和 video_gen 的 executor 需要在 Provider 注册后通过
@@ -188,6 +186,17 @@ func (d *Dispatcher) RegisterImageGenProvider(igp ImageGenProvider, assetWriter 
 // GetImageGenProvider 获取文生图 Provider
 func (d *Dispatcher) GetImageGenProvider() ImageGenProvider {
 	return d.imageGenProvider
+}
+
+// RegisterComicProviders 注册漫剧多模态 executor（需在 TTS/Video/ImageGen Provider 注册后调用）
+func (d *Dispatcher) RegisterComicProviders() {
+	if d.ttsProvider != nil {
+		d.executorRegistry.Register(model.TaskTypeComicAudio, NewComicAudioExecutor(d.ttsProvider))
+	}
+	if d.imageGenProvider != nil {
+		d.executorRegistry.Register(model.TaskTypeComicCharRef, NewComicCharRefExecutor(d.imageGenProvider))
+		d.executorRegistry.Register(model.TaskTypeComicMedia, NewComicMediaExecutor(d.videoProvider, d.imageGenProvider))
+	}
 }
 
 // GetTTSProvider 获取 TTS Provider
@@ -291,9 +300,10 @@ func (d *Dispatcher) CheckCapability(modelName string, taskType string) error {
 		return err
 	}
 
+	capability := taskTypeToCapability(taskType)
 	capabilities := provider.Capabilities()
 	for _, cap := range capabilities {
-		if cap == taskType {
+		if cap == capability {
 			return nil
 		}
 	}
@@ -329,8 +339,7 @@ func (d *Dispatcher) resolveKey(ctx context.Context, userID uint, providerName s
 func isMultiModalTask(taskType string) bool {
 	switch taskType {
 	case model.TaskTypeAudioGen, model.TaskTypeVideoGen, model.TaskTypeImageGen,
-		model.TaskTypeComicScript, model.TaskTypeComicStoryboard, model.TaskTypeComicCharRef,
-		model.TaskTypeComicAudio, model.TaskTypeComicMedia, model.TaskTypeComicCompose:
+		model.TaskTypeComicCharRef, model.TaskTypeComicAudio, model.TaskTypeComicMedia, model.TaskTypeComicCompose:
 		return true
 	}
 	return false

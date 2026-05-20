@@ -27,14 +27,14 @@
 - [ ] **Step 1: 使用 Vite 创建 Vue 3 + TypeScript 项目**
 
 ```bash
-cd /Users/sangchenglong/tmp/Ai-curton
+cd /Users/sangchenglong/go/src/story-maker
 npm create vite@latest web -- --template vue-ts
 ```
 
 - [ ] **Step 2: 安装核心依赖**
 
 ```bash
-cd /Users/sangchenglong/tmp/Ai-curton/web
+cd /Users/sangchenglong/go/src/story-maker/web
 npm install element-plus pinia vue-router@4 axios
 npm install -D tailwindcss@3 postcss autoprefixer sass @types/node
 npx tailwindcss init -p
@@ -248,7 +248,7 @@ app.mount('#app')
 - [ ] **Step 12: Commit**
 
 ```bash
-cd /Users/sangchenglong/tmp/Ai-curton
+cd /Users/sangchenglong/go/src/story-maker
 git add web/
 git commit -m "feat: init Vue 3 project with Vite, TypeScript, Tailwind CSS"
 ```
@@ -502,7 +502,7 @@ app.mount('#app')
 - [ ] **Step 5: Commit**
 
 ```bash
-cd /Users/sangchenglong/tmp/Ai-curton
+cd /Users/sangchenglong/go/src/story-maker
 git add web/src/assets/styles/ web/src/main.ts
 git commit -m "feat: add theme system with dark mode and glow animations"
 ```
@@ -616,7 +616,7 @@ export default request
 - [ ] **Step 3: Commit**
 
 ```bash
-cd /Users/sangchenglong/tmp/Ai-curton
+cd /Users/sangchenglong/go/src/story-maker
 git add web/src/api/
 git commit -m "feat: add axios wrapper with JWT interceptor and error handling"
 ```
@@ -771,7 +771,7 @@ html.dark {
 - [ ] **Step 4: Commit**
 
 ```bash
-cd /Users/sangchenglong/tmp/Ai-curton
+cd /Users/sangchenglong/go/src/story-maker
 git add web/src/router/ web/src/main.ts web/src/App.vue
 git commit -m "feat: add vue-router with auth guard and nested routes"
 ```
@@ -987,7 +987,7 @@ export const useAIStore = defineStore('ai', () => {
 - [ ] **Step 4: Commit**
 
 ```bash
-cd /Users/sangchenglong/tmp/Ai-curton
+cd /Users/sangchenglong/go/src/story-maker
 git add web/src/store/
 git commit -m "feat: add Pinia stores for user, workspace, and AI tasks"
 ```
@@ -1217,7 +1217,7 @@ defineProps<{
 - [ ] **Step 4: Commit**
 
 ```bash
-cd /Users/sangchenglong/tmp/Ai-curton
+cd /Users/sangchenglong/go/src/story-maker
 git add web/src/components/common/
 git commit -m "feat: add reusable UI components (GlowCard, NeonButton, FadePanel)"
 ```
@@ -1611,7 +1611,7 @@ onMounted(async () => {
 - [ ] **Step 4: Commit**
 
 ```bash
-cd /Users/sangchenglong/tmp/Ai-curton
+cd /Users/sangchenglong/go/src/story-maker
 git add web/src/components/layout/
 git commit -m "feat: add app layout with header, sidebar, and footer"
 ```
@@ -2049,7 +2049,7 @@ async function handleSubmit() {
 - [ ] **Step 3: Commit**
 
 ```bash
-cd /Users/sangchenglong/tmp/Ai-curton
+cd /Users/sangchenglong/go/src/story-maker
 git add web/src/views/auth/
 git commit -m "feat: add login and register pages with form validation"
 ```
@@ -2394,7 +2394,7 @@ defineProps<{
 - [ ] **Step 5: Commit**
 
 ```bash
-cd /Users/sangchenglong/tmp/Ai-curton
+cd /Users/sangchenglong/go/src/story-maker
 git add web/src/api/workspace.ts web/src/views/workspace/
 git commit -m "feat: add workspace list page with create dialog"
 ```
@@ -3157,7 +3157,7 @@ function goToCharacters() {
 - [ ] **Step 6: Commit**
 
 ```bash
-cd /Users/sangchenglong/tmp/Ai-curton
+cd /Users/sangchenglong/go/src/story-maker
 git add web/src/api/portfolio.ts web/src/views/portfolio/ web/src/views/workspace/WorkspaceDetail.vue web/src/views/workspace/MemberManage.vue
 git commit -m "feat: add portfolio pages with resource management and member management"
 ```
@@ -3657,7 +3657,7 @@ function handleUploadSuccess(response: any) {
 - [ ] **Step 4: Commit**
 
 ```bash
-cd /Users/sangchenglong/tmp/Ai-curton
+cd /Users/sangchenglong/go/src/story-maker
 git add web/src/api/character.ts web/src/views/character/
 git commit -m "feat: add character management with editor and reference images"
 ```
@@ -4382,7 +4382,7 @@ async function handleGenerate() {
 - [ ] **Step 6: Commit**
 
 ```bash
-cd /Users/sangchenglong/tmp/Ai-curton
+cd /Users/sangchenglong/go/src/story-maker
 git add web/src/api/ai.ts web/src/components/ai/ web/src/views/studio/
 git commit -m "feat: add AI studio with model selector, prompt editor, and task progress"
 ```
@@ -4538,7 +4538,7 @@ export function closeWSClient() {
 - [ ] **Step 2: Commit**
 
 ```bash
-cd /Users/sangchenglong/tmp/Ai-curton
+cd /Users/sangchenglong/go/src/story-maker
 git add web/src/utils/websocket.ts
 git commit -m "feat: add WebSocket client with auto-reconnect and type-based dispatch"
 ```
@@ -4854,7 +4854,7 @@ onMounted(loadKeys)
 - [ ] **Step 3: Commit**
 
 ```bash
-cd /Users/sangchenglong/tmp/Ai-curton
+cd /Users/sangchenglong/go/src/story-maker
 git add web/src/api/apikey.ts web/src/views/settings/APIKeyManage.vue
 git commit -m "feat: add API Key management page with CRUD operations"
 ```
@@ -4935,7 +4935,7 @@ CMD ["nginx", "-g", "daemon off;"]
 - [ ] **Step 3: Commit**
 
 ```bash
-cd /Users/sangchenglong/tmp/Ai-curton
+cd /Users/sangchenglong/go/src/story-maker
 git add web/nginx.conf web/Dockerfile
 git commit -m "feat: add Nginx config and Dockerfile for frontend deployment"
 ```

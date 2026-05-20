@@ -10,7 +10,7 @@ type AITask struct {
 	PortfolioID      uint      `gorm:"index" json:"portfolio_id"`
 	TaskType         string    `gorm:"size:50" json:"task_type"`     // text_gen, image_gen, character_adjust
 	ModelName        string    `gorm:"size:50" json:"model_name"`    // kimi, claude, copilot
-	Prompt           string    `gorm:"type:text" json:"prompt"`
+	Prompt           string    `gorm:"type:longtext" json:"prompt"`
 	History          string    `gorm:"type:text" json:"history"`              // 多轮对话历史 JSON
 	Status           string    `gorm:"size:20;default:pending" json:"status"` // pending, running, completed, failed, cancelled
 	Result           string    `gorm:"type:text" json:"result"`

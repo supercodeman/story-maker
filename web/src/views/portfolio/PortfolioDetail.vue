@@ -45,7 +45,12 @@
         <h3>角色管理</h3>
         <p>管理该作品集的角色</p>
       </GlowCard>
-      
+      <GlowCard hoverable class="action-card" @click="goToComicDrama">
+        <div class="action-card__icon">🎬</div>
+        <h3>漫剧工坊</h3>
+        <p>将小说章节转化为 AI 漫剧视频</p>
+      </GlowCard>
+
     </div>
 
     <div class="section">
@@ -138,6 +143,9 @@ function goToStudio() {
 }
 function goToNovels() {
   router.push(`/workspace/${props.id}/portfolio/${props.pid}/novels`)
+}
+function goToComicDrama() {
+  router.push(`/workspace/${props.id}/portfolio/${props.pid}/comic-drama`)
 }
 function statusTagType(s: string) {
   const map: Record<string, string> = { completed: 'success', running: 'warning', failed: 'danger', pending: 'info' }

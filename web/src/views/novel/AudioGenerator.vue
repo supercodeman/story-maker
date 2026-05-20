@@ -3,11 +3,13 @@
   <div class="audio-generator">
     <div class="audio-generator__config">
       <el-select v-model="voiceId" size="small" placeholder="音色" style="flex: 1">
-        <el-option label="御姐" value="female-yujie" />
-        <el-option label="少女" value="female-shaonv" />
-        <el-option label="磁性男声" value="male-qn-qingse" />
-        <el-option label="沉稳男声" value="male-qn-jingying" />
-        <el-option label="童声" value="female-tianmei" />
+        <el-option label="Cherry（中文女声·通用）" value="Cherry" />
+        <el-option label="Ethan（中文男声·通用）" value="Ethan" />
+        <el-option label="Chelsie（中文女声）" value="Chelsie" />
+        <el-option label="Serena（中文女声）" value="Serena" />
+        <el-option label="Dylan（北京话·男）" value="Dylan" />
+        <el-option label="Jada（上海话·女）" value="Jada" />
+        <el-option label="Sunny（四川话·女）" value="Sunny" />
       </el-select>
       <el-input-number
         v-model="speed"
@@ -38,10 +40,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
 import { mediaApi } from '@/api/media'
 import type { MediaAsset } from '@/api/media'
+import { aiApi } from '@/api/ai'
 import MediaAssetList from './MediaAssetList.vue'
 
 const props = defineProps<{
@@ -50,10 +53,23 @@ const props = defineProps<{
   portfolioId: number
 }>()
 
-const voiceId = ref('female-yujie')
+const voiceId = ref('Cherry')
 const speed = ref(1.0)
 const loading = ref(false)
 const audioAssets = ref<MediaAsset[]>([])
+
+// 轮询控制
+const POLL_INTERVAL_MS = 2000
+// 长章节会按段落切分串行合成，每段 5-15s，给 5 分钟兜底
+const POLL_TIMEOUT_MS = 300_000
+let pollTimer: ReturnType<typeof setInterval> | null = null
+
+function stopPolling() {
+  if (pollTimer) {
+    clearInterval(pollTimer)
+    pollTimer = null
+  }
+}
 
 async function loadAssets() {
   if (!props.chapterId) return
@@ -64,6 +80,35 @@ async function loadAssets() {
   }
 }
 
+// 轮询任务状态直到完成/失败/超时
+function pollTask(taskId: number) {
+  const startAt = Date.now()
+  stopPolling()
+  pollTimer = setInterval(async () => {
+    if (Date.now() - startAt > POLL_TIMEOUT_MS) {
+      stopPolling()
+      loading.value = false
+      ElMessage.warning('音频生成超时，请稍后在列表刷新查看')
+      return
+    }
+    try {
+      const task: any = await aiApi.getTask(taskId)
+      if (task?.status === 'completed') {
+        stopPolling()
+        loading.value = false
+        ElMessage.success('音频生成完成')
+        await loadAssets()
+      } else if (task?.status === 'failed' || task?.status === 'cancelled') {
+        stopPolling()
+        loading.value = false
+        ElMessage.error(task?.error_msg || '音频生成失败')
+      }
+    } catch (e) {
+      // 单次轮询失败不终止，等下一次
+    }
+  }, POLL_INTERVAL_MS)
+}
+
 async function handleGenerate() {
   if (!props.chapterContent) {
     ElMessage.warning('章节内容为空')
@@ -71,23 +116,28 @@ async function handleGenerate() {
   }
   loading.value = true
   try {
-    await mediaApi.generateAudio({
+    const resp = await mediaApi.generateAudio({
       portfolio_id: props.portfolioId,
       chapter_id: props.chapterId,
       text: props.chapterContent,
       voice_id: voiceId.value,
       speed: speed.value,
     })
-    ElMessage.success('音频生成任务已提交，请等待完成通知')
+    ElMessage.info('已提交，正在生成中...')
+    pollTask(resp.task_id)
   } catch (e: any) {
-    ElMessage.error(e.message || '提交失败')
-  } finally {
     loading.value = false
+    ElMessage.error(e.message || '提交失败')
   }
 }
 
-watch(() => props.chapterId, loadAssets)
+watch(() => props.chapterId, () => {
+  stopPolling()
+  loading.value = false
+  loadAssets()
+})
 onMounted(loadAssets)
+onBeforeUnmount(stopPolling)
 </script>
 
 <style scoped>

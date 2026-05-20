@@ -62,7 +62,7 @@ const (
 - [ ] **Step 2: Commit**
 
 ```bash
-cd /Users/sangchenglong/tmp/Ai-curton
+cd /Users/sangchenglong/go/src/story-maker
 git add server/internal/model/ai_task.go
 git commit -m "feat: add AITask model with status and type constants"
 ```
@@ -182,7 +182,7 @@ func DecryptAES(ciphertext string, key []byte) (string, error) {
 - [ ] **Step 3: Commit**
 
 ```bash
-cd /Users/sangchenglong/tmp/Ai-curton
+cd /Users/sangchenglong/go/src/story-maker
 git add server/internal/model/api_key.go server/internal/util/crypto.go
 git commit -m "feat: add APIKey model and AES-256-GCM encryption utilities"
 ```
@@ -271,7 +271,7 @@ const (
 - [ ] **Step 2: Commit**
 
 ```bash
-cd /Users/sangchenglong/tmp/Ai-curton
+cd /Users/sangchenglong/go/src/story-maker
 git add server/internal/agent/provider.go
 git commit -m "feat: define AIProvider interface with text/image/character capabilities"
 ```
@@ -286,7 +286,7 @@ git commit -m "feat: define AIProvider interface with text/image/character capab
 - [ ] **Step 1: 安装 HTTP 依赖（如尚未安装）**
 
 ```bash
-cd /Users/sangchenglong/tmp/Ai-curton/server
+cd /Users/sangchenglong/go/src/story-maker/server
 go get github.com/go-resty/resty/v2@v2.11.0
 ```
 
@@ -558,7 +558,7 @@ func (k *KimiProvider) Capabilities() []string {
 - [ ] **Step 3: Commit**
 
 ```bash
-cd /Users/sangchenglong/tmp/Ai-curton
+cd /Users/sangchenglong/go/src/story-maker
 git add server/internal/agent/kimi.go
 git commit -m "feat: implement Kimi provider adapter with text/image/character APIs"
 ```
@@ -583,7 +583,7 @@ import (
 	"fmt"
 	"sync"
 
-	"ai-curton/server/internal/model"
+	"story-maker/server/internal/model"
 )
 
 // TaskResult 任务结果结构
@@ -859,7 +859,7 @@ func (d *Dispatcher) CancelTask(ctx context.Context, taskID uint) error {
 - [ ] **Step 2: Commit**
 
 ```bash
-cd /Users/sangchenglong/tmp/Ai-curton
+cd /Users/sangchenglong/go/src/story-maker
 git add server/internal/agent/dispatcher.go
 git commit -m "feat: implement Dispatcher with async task execution and WebSocket notification"
 ```
@@ -874,7 +874,7 @@ git commit -m "feat: implement Dispatcher with async task execution and WebSocke
 - [ ] **Step 1: 安装 WebSocket 依赖**
 
 ```bash
-cd /Users/sangchenglong/tmp/Ai-curton/server
+cd /Users/sangchenglong/go/src/story-maker/server
 go get github.com/gorilla/websocket@v1.5.1
 ```
 
@@ -1117,7 +1117,7 @@ func (h *WSHandler) HandleWebSocket(c *gin.Context) {
 - [ ] **Step 3: Commit**
 
 ```bash
-cd /Users/sangchenglong/tmp/Ai-curton
+cd /Users/sangchenglong/go/src/story-maker
 git add server/internal/handler/ws.go
 git commit -m "feat: implement WebSocket Hub for real-time task notifications"
 ```
@@ -1139,7 +1139,7 @@ package dao
 import (
 	"context"
 
-	"ai-curton/server/internal/model"
+	"story-maker/server/internal/model"
 	"gorm.io/gorm"
 )
 
@@ -1227,9 +1227,9 @@ import (
 	"context"
 	"errors"
 
-	"ai-curton/server/internal/agent"
-	"ai-curton/server/internal/dao"
-	"ai-curton/server/internal/model"
+	"story-maker/server/internal/agent"
+	"story-maker/server/internal/dao"
+	"story-maker/server/internal/model"
 )
 
 // AIService AI 服务层
@@ -1373,7 +1373,7 @@ func (s *AIService) CancelTask(ctx context.Context, taskID, userID uint) error {
 - [ ] **Step 3: Commit**
 
 ```bash
-cd /Users/sangchenglong/tmp/Ai-curton
+cd /Users/sangchenglong/go/src/story-maker
 git add server/internal/dao/ai_task.go server/internal/service/ai.go
 git commit -m "feat: implement AI task DAO and service with validation and permission checks"
 ```
@@ -1395,7 +1395,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"ai-curton/server/internal/service"
+	"story-maker/server/internal/service"
 	"github.com/gin-gonic/gin"
 )
 
@@ -1582,7 +1582,7 @@ func (h *AIHandler) CancelTask(c *gin.Context) {
 - [ ] **Step 2: Commit**
 
 ```bash
-cd /Users/sangchenglong/tmp/Ai-curton
+cd /Users/sangchenglong/go/src/story-maker
 git add server/internal/handler/ai.go
 git commit -m "feat: implement AI handler with text/image/character endpoints"
 ```
@@ -1605,7 +1605,7 @@ package dao
 import (
 	"context"
 
-	"ai-curton/server/internal/model"
+	"story-maker/server/internal/model"
 	"gorm.io/gorm"
 )
 
@@ -1678,10 +1678,10 @@ import (
 	"context"
 	"errors"
 
-	"ai-curton/server/config"
-	"ai-curton/server/internal/dao"
-	"ai-curton/server/internal/model"
-	"ai-curton/server/internal/util"
+	"story-maker/server/config"
+	"story-maker/server/internal/dao"
+	"story-maker/server/internal/model"
+	"story-maker/server/internal/util"
 )
 
 // APIKeyService API Key 服务层，负责加密存储和解密读取
@@ -1874,7 +1874,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"ai-curton/server/internal/service"
+	"story-maker/server/internal/service"
 	"github.com/gin-gonic/gin"
 )
 
@@ -1984,7 +1984,7 @@ func (h *APIKeyHandler) DeleteKey(c *gin.Context) {
 - [ ] **Step 4: Commit**
 
 ```bash
-cd /Users/sangchenglong/tmp/Ai-curton
+cd /Users/sangchenglong/go/src/story-maker
 git add server/internal/dao/api_key.go server/internal/service/api_key.go server/internal/handler/api_key.go
 git commit -m "feat: implement API Key CRUD with AES encryption and masked responses"
 ```
@@ -2051,13 +2051,13 @@ import (
 	"syscall"
 	"time"
 
-	"ai-curton/server/config"
-	"ai-curton/server/internal/agent"
-	"ai-curton/server/internal/dao"
-	"ai-curton/server/internal/handler"
-	"ai-curton/server/internal/middleware"
-	"ai-curton/server/internal/model"
-	"ai-curton/server/internal/service"
+	"story-maker/server/config"
+	"story-maker/server/internal/agent"
+	"story-maker/server/internal/dao"
+	"story-maker/server/internal/handler"
+	"story-maker/server/internal/middleware"
+	"story-maker/server/internal/model"
+	"story-maker/server/internal/service"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -2326,13 +2326,13 @@ func JWTAuth(secret string) gin.HandlerFunc {
 - [ ] **Step 5: 创建 util 目录（如尚未存在）**
 
 ```bash
-mkdir -p /Users/sangchenglong/tmp/Ai-curton/server/internal/util
+mkdir -p /Users/sangchenglong/go/src/story-maker/server/internal/util
 ```
 
 - [ ] **Step 6: 验证编译**
 
 ```bash
-cd /Users/sangchenglong/tmp/Ai-curton/server
+cd /Users/sangchenglong/go/src/story-maker/server
 go mod tidy
 go build ./cmd/...
 ```
@@ -2340,7 +2340,7 @@ go build ./cmd/...
 - [ ] **Step 7: Commit**
 
 ```bash
-cd /Users/sangchenglong/tmp/Ai-curton
+cd /Users/sangchenglong/go/src/story-maker
 git add server/cmd/main.go server/config/config.go server/config/config.yaml server/internal/middleware/auth.go
 git commit -m "feat: integrate AI Agent layer with routing, WebSocket, and configuration"
 ```
@@ -2438,13 +2438,13 @@ curl -X GET "$BASE_URL/apikeys" \
 - [ ] **Step 3: 添加执行权限**
 
 ```bash
-chmod +x /Users/sangchenglong/tmp/Ai-curton/server/scripts/test_api.sh
+chmod +x /Users/sangchenglong/go/src/story-maker/server/scripts/test_api.sh
 ```
 
 - [ ] **Step 4: Commit**
 
 ```bash
-cd /Users/sangchenglong/tmp/Ai-curton
+cd /Users/sangchenglong/go/src/story-maker
 git add server/scripts/
 git commit -m "feat: add database migration and API test scripts"
 ```
@@ -2690,7 +2690,7 @@ dispatcher.RegisterProvider(model.ProviderClaude, claudeProvider)
 运行测试脚本：
 
 ```bash
-cd /Users/sangchenglong/tmp/Ai-curton/server
+cd /Users/sangchenglong/go/src/story-maker/server
 ./scripts/test_api.sh
 ```
 
@@ -2714,7 +2714,7 @@ cd /Users/sangchenglong/tmp/Ai-curton/server
 - [ ] **Step 2: Commit**
 
 ```bash
-cd /Users/sangchenglong/tmp/Ai-curton
+cd /Users/sangchenglong/go/src/story-maker
 git add server/docs/
 git commit -m "docs: add AI Agent integration documentation"
 ```

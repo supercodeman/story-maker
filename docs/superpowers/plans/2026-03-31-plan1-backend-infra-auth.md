@@ -21,14 +21,14 @@
 在 `server/` 目录下执行：
 
 ```bash
-cd /Users/sangchenglong/tmp/Ai-curton/server
-go mod init ai-curton/server
+cd /Users/sangchenglong/go/src/story-maker/server
+go mod init story-maker/server
 ```
 
 - [ ] **Step 2: 安装核心依赖**
 
 ```bash
-cd /Users/sangchenglong/tmp/Ai-curton/server
+cd /Users/sangchenglong/go/src/story-maker/server
 go get github.com/gin-gonic/gin@v1.9.1
 go get gorm.io/gorm@v1.25.7
 go get gorm.io/driver/mysql@v1.5.4
@@ -55,14 +55,14 @@ func main() {
 - [ ] **Step 4: 验证编译**
 
 ```bash
-cd /Users/sangchenglong/tmp/Ai-curton/server
+cd /Users/sangchenglong/go/src/story-maker/server
 go build ./cmd/...
 ```
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd /Users/sangchenglong/tmp/Ai-curton
+cd /Users/sangchenglong/go/src/story-maker
 git add server/go.mod server/go.sum server/cmd/main.go
 git commit -m "feat: init Go module with core dependencies and entry point"
 ```
@@ -197,7 +197,7 @@ kimi:
 - [ ] **Step 3: Commit**
 
 ```bash
-cd /Users/sangchenglong/tmp/Ai-curton
+cd /Users/sangchenglong/go/src/story-maker
 git add server/config/ server/config.yaml
 git commit -m "feat: add config module with viper-based YAML loading"
 ```
@@ -220,7 +220,7 @@ import (
 	"fmt"
 	"time"
 
-	"ai-curton/server/config"
+	"story-maker/server/config"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -301,7 +301,7 @@ func (User) TableName() string {
 - [ ] **Step 3: Commit**
 
 ```bash
-cd /Users/sangchenglong/tmp/Ai-curton
+cd /Users/sangchenglong/go/src/story-maker
 git add server/internal/model/
 git commit -m "feat: add database initialization and User model with auto-migrate"
 ```
@@ -324,7 +324,7 @@ import (
 	"fmt"
 	"time"
 
-	"ai-curton/server/config"
+	"story-maker/server/config"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -363,7 +363,7 @@ func CloseRedis() error {
 - [ ] **Step 2: Commit**
 
 ```bash
-cd /Users/sangchenglong/tmp/Ai-curton
+cd /Users/sangchenglong/go/src/story-maker
 git add server/internal/model/redis.go
 git commit -m "feat: add Redis client initialization"
 ```
@@ -412,7 +412,7 @@ import (
 	"net/http"
 	"strings"
 
-	"ai-curton/server/config"
+	"story-maker/server/config"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -500,7 +500,7 @@ func GetUsername(c *gin.Context) string {
 - [ ] **Step 3: Commit**
 
 ```bash
-cd /Users/sangchenglong/tmp/Ai-curton
+cd /Users/sangchenglong/go/src/story-maker
 git add server/internal/middleware/
 git commit -m "feat: add CORS and JWT authentication middleware"
 ```
@@ -519,7 +519,7 @@ git commit -m "feat: add CORS and JWT authentication middleware"
 package dao
 
 import (
-	"ai-curton/server/internal/model"
+	"story-maker/server/internal/model"
 
 	"gorm.io/gorm"
 )
@@ -581,7 +581,7 @@ func (d *UserDAO) GetUserByUsername(username string) (*model.User, error) {
 - [ ] **Step 2: Commit**
 
 ```bash
-cd /Users/sangchenglong/tmp/Ai-curton
+cd /Users/sangchenglong/go/src/story-maker
 git add server/internal/dao/
 git commit -m "feat: add User DAO with CRUD operations"
 ```
@@ -603,9 +603,9 @@ import (
 	"errors"
 	"time"
 
-	"ai-curton/server/config"
-	"ai-curton/server/internal/dao"
-	"ai-curton/server/internal/model"
+	"story-maker/server/config"
+	"story-maker/server/internal/dao"
+	"story-maker/server/internal/model"
 
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
@@ -811,7 +811,7 @@ func (s *AuthService) generateTokenPair(user *model.User) (*TokenResponse, error
 - [ ] **Step 2: Commit**
 
 ```bash
-cd /Users/sangchenglong/tmp/Ai-curton
+cd /Users/sangchenglong/go/src/story-maker
 git add server/internal/service/
 git commit -m "feat: add Auth service with register, login, profile CRUD and JWT generation"
 ```
@@ -893,7 +893,7 @@ func InternalError(c *gin.Context, message string) {
 package handler
 
 import (
-	"ai-curton/server/internal/service"
+	"story-maker/server/internal/service"
 
 	"github.com/gin-gonic/gin"
 )
@@ -967,8 +967,8 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 package handler
 
 import (
-	"ai-curton/server/internal/middleware"
-	"ai-curton/server/internal/service"
+	"story-maker/server/internal/middleware"
+	"story-maker/server/internal/service"
 
 	"github.com/gin-gonic/gin"
 )
@@ -1031,7 +1031,7 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 - [ ] **Step 4: Commit**
 
 ```bash
-cd /Users/sangchenglong/tmp/Ai-curton
+cd /Users/sangchenglong/go/src/story-maker
 git add server/internal/handler/
 git commit -m "feat: add Auth and User handlers with unified response format"
 ```
@@ -1051,8 +1051,8 @@ git commit -m "feat: add Auth and User handlers with unified response format"
 package router
 
 import (
-	"ai-curton/server/internal/handler"
-	"ai-curton/server/internal/middleware"
+	"story-maker/server/internal/handler"
+	"story-maker/server/internal/middleware"
 
 	"github.com/gin-gonic/gin"
 )
@@ -1109,9 +1109,9 @@ import (
 	"fmt"
 	"log"
 
-	"ai-curton/server/config"
-	"ai-curton/server/internal/model"
-	"ai-curton/server/internal/router"
+	"story-maker/server/config"
+	"story-maker/server/internal/model"
+	"story-maker/server/internal/router"
 
 	"github.com/gin-gonic/gin"
 )
@@ -1155,14 +1155,14 @@ func main() {
 - [ ] **Step 3: 验证编译**
 
 ```bash
-cd /Users/sangchenglong/tmp/Ai-curton/server
+cd /Users/sangchenglong/go/src/story-maker/server
 go build ./cmd/...
 ```
 
 - [ ] **Step 4: Commit**
 
 ```bash
-cd /Users/sangchenglong/tmp/Ai-curton
+cd /Users/sangchenglong/go/src/story-maker
 git add server/internal/router/ server/cmd/main.go
 git commit -m "feat: add router setup and wire all modules in main.go entry point"
 ```
@@ -1242,7 +1242,7 @@ version: "3.8"
 services:
   mysql:
     image: mysql:8.0
-    container_name: ai-curton-mysql
+    container_name: story-maker-mysql
     restart: unless-stopped
     ports:
       - "3306:3306"
@@ -1262,7 +1262,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: ai-curton-redis
+    container_name: story-maker-redis
     restart: unless-stopped
     ports:
       - "6379:6379"
@@ -1279,7 +1279,7 @@ services:
     build:
       context: ./server
       dockerfile: Dockerfile
-    container_name: ai-curton-server
+    container_name: story-maker-server
     restart: unless-stopped
     ports:
       - "8080:8080"
@@ -1344,14 +1344,14 @@ kimi:
 - [ ] **Step 5: 验证 Docker 构建**
 
 ```bash
-cd /Users/sangchenglong/tmp/Ai-curton
+cd /Users/sangchenglong/go/src/story-maker
 docker-compose config  # 验证 compose 文件语法
 ```
 
 - [ ] **Step 6: Commit**
 
 ```bash
-cd /Users/sangchenglong/tmp/Ai-curton
+cd /Users/sangchenglong/go/src/story-maker
 git add docker-compose.yml server/Dockerfile server/.dockerignore server/config.docker.yaml
 git commit -m "feat: add Docker Compose (mysql + redis + server) and server Dockerfile"
 ```
@@ -1379,7 +1379,7 @@ git commit -m "feat: add Docker Compose (mysql + redis + server) and server Dock
 完成本 Plan 后的项目目录结构：
 
 ```
-Ai-curton/
+story-maker/
 ├── docker-compose.yml
 ├── data/                          # Docker 数据卷（gitignore）
 │   ├── mysql/

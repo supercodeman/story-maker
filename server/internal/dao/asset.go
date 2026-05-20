@@ -67,3 +67,36 @@ func (d *AssetDAO) ListByChapterIDs(chapterIDs []uint, assetType string) ([]mode
 	err := query.Order("chapter_id ASC, created_at DESC").Find(&assets).Error
 	return assets, err
 }
+
+// SetCharacterRef 将指定 asset 设为角色参考图（同一 portfolio 只保留一张）
+func (d *AssetDAO) SetCharacterRef(assetID, portfolioID uint) error {
+	return d.db.Transaction(func(tx *gorm.DB) error {
+		// 先清除同 portfolio 下已有的 character_ref
+		if err := tx.Model(&model.Asset{}).
+			Where("portfolio_id = ? AND role = ?", portfolioID, "character_ref").
+			Update("role", "").Error; err != nil {
+			return err
+		}
+		// 设置新的
+		return tx.Model(&model.Asset{}).
+			Where("id = ? AND portfolio_id = ?", assetID, portfolioID).
+			Update("role", "character_ref").Error
+	})
+}
+
+// UnsetCharacterRef 取消角色参考图标记
+func (d *AssetDAO) UnsetCharacterRef(assetID uint) error {
+	return d.db.Model(&model.Asset{}).
+		Where("id = ?", assetID).
+		Update("role", "").Error
+}
+
+// GetCharacterRef 获取 portfolio 下的角色参考图
+func (d *AssetDAO) GetCharacterRef(portfolioID uint) (*model.Asset, error) {
+	var asset model.Asset
+	err := d.db.Where("portfolio_id = ? AND role = ?", portfolioID, "character_ref").First(&asset).Error
+	if err != nil {
+		return nil, err
+	}
+	return &asset, nil
+}

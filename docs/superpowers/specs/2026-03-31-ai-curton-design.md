@@ -258,7 +258,7 @@ DELETE /api/v1/apikeys/:id            # 删除 API Key
 ### 目录结构
 
 ```
-Ai-curton/
+story-maker/
 ├── server/
 │   ├── cmd/
 │   │   └── main.go                  # 入口

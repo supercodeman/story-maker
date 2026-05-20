@@ -81,8 +81,9 @@ type ZhipuConfig struct {
 }
 
 type QwenConfig struct {
-	APIKey  string `mapstructure:"api_key"`
-	BaseURL string `mapstructure:"base_url"`
+	APIKey   string `mapstructure:"api_key"`
+	BaseURL  string `mapstructure:"base_url"`
+	TTSModel string `mapstructure:"tts_model"` // TTS 模型，默认 qwen3-tts-vd-2026-01-26
 }
 
 type DeepseekConfig struct {

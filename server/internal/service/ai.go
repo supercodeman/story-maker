@@ -66,21 +66,36 @@ func (s *AIService) SubmitTextTask(ctx context.Context, userID, portfolioID uint
 	return task.ID, nil
 }
 
-// SubmitImageTask 提交图像生成任务
+// SubmitImageTask 提交图像生成任务（旧接口，保留兼容）
 func (s *AIService) SubmitImageTask(ctx context.Context, userID, portfolioID uint, modelName, prompt string) (uint, error) {
+	return s.SubmitImageGenTask(ctx, userID, portfolioID, 0, prompt, "", 1)
+}
+
+// SubmitImageGenTask 提交文生图任务（新接口，支持章节绑定和参数）
+func (s *AIService) SubmitImageGenTask(ctx context.Context, userID, portfolioID, chapterID uint, prompt, aspectRatio string, n int) (uint, error) {
 	if prompt == "" {
 		return 0, errors.New("prompt cannot be empty")
 	}
-	if modelName == "" {
-		modelName = model.ProviderZhipu
+	if n <= 0 {
+		n = 1
 	}
+
+	// 将参数序列化为 JSON 作为 prompt 传入
+	promptJSON, _ := json.Marshal(map[string]interface{}{
+		"prompt":       prompt,
+		"aspect_ratio": aspectRatio,
+		"n":            n,
+	})
 
 	task := &model.AITask{
 		UserID:      userID,
 		PortfolioID: portfolioID,
 		TaskType:    model.TaskTypeImageGen,
-		ModelName:   modelName,
-		Prompt:      prompt,
+		ModelName:   "qwen_image",
+		Prompt:      string(promptJSON),
+	}
+	if chapterID > 0 {
+		task.ChapterID = &chapterID
 	}
 
 	if err := s.dispatcher.Dispatch(ctx, task); err != nil {
@@ -163,7 +178,8 @@ func (s *AIService) CancelTask(ctx context.Context, taskID, userID uint) error {
 }
 
 // SubmitAudioTask 提交音频生成任务
-func (s *AIService) SubmitAudioTask(ctx context.Context, userID, portfolioID uint, prompt string) (uint, error) {
+// chapterID 用于完成后把生成的音频绑定到 assets 表对应章节
+func (s *AIService) SubmitAudioTask(ctx context.Context, userID, portfolioID, chapterID uint, prompt string) (uint, error) {
 	if prompt == "" {
 		return 0, errors.New("prompt cannot be empty")
 	}
@@ -174,6 +190,9 @@ func (s *AIService) SubmitAudioTask(ctx context.Context, userID, portfolioID uin
 		TaskType:    model.TaskTypeAudioGen,
 		ModelName:   "minimax_tts",
 		Prompt:      prompt,
+	}
+	if chapterID > 0 {
+		task.ChapterID = &chapterID
 	}
 
 	if err := s.dispatcher.Dispatch(ctx, task); err != nil {

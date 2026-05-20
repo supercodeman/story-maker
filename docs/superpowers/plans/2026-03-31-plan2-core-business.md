@@ -100,7 +100,7 @@ git commit -m "feat(model): add Workspace and WorkspaceMember models with role/t
 package dao
 
 import (
-	"ai-curton/server/internal/model"
+	"story-maker/server/internal/model"
 
 	"gorm.io/gorm"
 )
@@ -214,8 +214,8 @@ package service
 import (
 	"errors"
 
-	"ai-curton/server/internal/dao"
-	"ai-curton/server/internal/model"
+	"story-maker/server/internal/dao"
+	"story-maker/server/internal/model"
 )
 
 // WorkspaceService 工作空间业务逻辑层
@@ -379,7 +379,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"ai-curton/server/internal/service"
+	"story-maker/server/internal/service"
 
 	"github.com/gin-gonic/gin"
 )
@@ -581,8 +581,8 @@ import (
 	"net/http"
 	"strconv"
 
-	"ai-curton/server/internal/dao"
-	"ai-curton/server/internal/model"
+	"story-maker/server/internal/dao"
+	"story-maker/server/internal/model"
 
 	"github.com/gin-gonic/gin"
 )
@@ -717,7 +717,7 @@ DB.AutoMigrate(&Portfolio{})
 package dao
 
 import (
-	"ai-curton/server/internal/model"
+	"story-maker/server/internal/model"
 
 	"gorm.io/gorm"
 )
@@ -776,8 +776,8 @@ package service
 import (
 	"errors"
 
-	"ai-curton/server/internal/dao"
-	"ai-curton/server/internal/model"
+	"story-maker/server/internal/dao"
+	"story-maker/server/internal/model"
 )
 
 // PortfolioService 作品集业务逻辑层
@@ -911,7 +911,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"ai-curton/server/internal/service"
+	"story-maker/server/internal/service"
 
 	"github.com/gin-gonic/gin"
 )
@@ -1087,7 +1087,7 @@ DB.AutoMigrate(&Character{})
 package dao
 
 import (
-	"ai-curton/server/internal/model"
+	"story-maker/server/internal/model"
 
 	"gorm.io/gorm"
 )
@@ -1147,8 +1147,8 @@ import (
 	"encoding/json"
 	"errors"
 
-	"ai-curton/server/internal/dao"
-	"ai-curton/server/internal/model"
+	"story-maker/server/internal/dao"
+	"story-maker/server/internal/model"
 )
 
 // CharacterService 角色业务逻辑层
@@ -1359,8 +1359,8 @@ import (
 	"net/http"
 	"strconv"
 
-	"ai-curton/server/internal/service"
-	"ai-curton/server/internal/storage"
+	"story-maker/server/internal/service"
+	"story-maker/server/internal/storage"
 
 	"github.com/gin-gonic/gin"
 )
@@ -1747,7 +1747,7 @@ DB.AutoMigrate(&Asset{})
 package dao
 
 import (
-	"ai-curton/server/internal/model"
+	"story-maker/server/internal/model"
 
 	"gorm.io/gorm"
 )
@@ -1805,9 +1805,9 @@ import (
 	"io"
 	"time"
 
-	"ai-curton/server/internal/dao"
-	"ai-curton/server/internal/model"
-	"ai-curton/server/internal/storage"
+	"story-maker/server/internal/dao"
+	"story-maker/server/internal/model"
+	"story-maker/server/internal/storage"
 )
 
 // AssetService 资源业务逻辑层
@@ -1960,9 +1960,9 @@ import (
 	"io"
 	"time"
 
-	"ai-curton/server/internal/dao"
-	"ai-curton/server/internal/model"
-	"ai-curton/server/internal/storage"
+	"story-maker/server/internal/dao"
+	"story-maker/server/internal/model"
+	"story-maker/server/internal/storage"
 )
 ```
 
@@ -1976,9 +1976,9 @@ import (
 	"net/http"
 	"strconv"
 
-	"ai-curton/server/internal/model"
-	"ai-curton/server/internal/service"
-	"ai-curton/server/internal/storage"
+	"story-maker/server/internal/model"
+	"story-maker/server/internal/service"
+	"story-maker/server/internal/storage"
 
 	"github.com/gin-gonic/gin"
 )
@@ -2140,10 +2140,10 @@ package main
 import (
 	"log"
 
-	"ai-curton/server/internal/handler"
-	"ai-curton/server/internal/middleware"
-	"ai-curton/server/internal/model"
-	"ai-curton/server/internal/storage"
+	"story-maker/server/internal/handler"
+	"story-maker/server/internal/middleware"
+	"story-maker/server/internal/model"
+	"story-maker/server/internal/storage"
 
 	"github.com/gin-gonic/gin"
 )

@@ -21,7 +21,7 @@ func NewComicDramaHandler(svc *service.ComicDramaService) *ComicDramaHandler {
 
 type createComicDramaReq struct {
 	NovelID   uint   `json:"novel_id" binding:"required"`
-	ChapterID uint   `json:"chapter_id" binding:"required"`
+	ChapterID uint   `json:"chapter_id"`
 	Title     string `json:"title" binding:"required"`
 	Config    string `json:"config"`
 }

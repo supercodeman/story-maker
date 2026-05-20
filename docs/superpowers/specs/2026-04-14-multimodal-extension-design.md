@@ -1,4 +1,4 @@
-# Ai-curton 多模态扩展设计文档
+# story-maker 多模态扩展设计文档
 
 > 日期：2026-04-14
 > 方案：最小扩展方案（方案 A）— 沿用现有 dispatcher/executor/storage 体系

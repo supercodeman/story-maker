@@ -61,7 +61,7 @@
 将 `server/go.mod` 中的 toolchain 从 `go1.22.12` 改为 `go1.23.10`：
 
 ```go
-module ai-curton/server
+module story-maker/server
 
 go 1.22
 
@@ -71,7 +71,7 @@ toolchain go1.23.10
 - [ ] **Step 2: 清理编译缓存并验证编译**
 
 ```bash
-cd /Users/sangchenglong/go/src/Ai-curton/server
+cd /Users/sangchenglong/go/src/story-maker/server
 go clean -cache
 go build ./cmd/main.go
 ```
@@ -109,7 +109,7 @@ func AuthRequired() gin.HandlerFunc {
 - [ ] **Step 2: 验证编译**
 
 ```bash
-cd /Users/sangchenglong/go/src/Ai-curton/server
+cd /Users/sangchenglong/go/src/story-maker/server
 go build ./cmd/main.go
 ```
 
@@ -314,7 +314,7 @@ func (m *MockProvider) Capabilities() []string {
 - [ ] **Step 5: 验证编译**
 
 ```bash
-cd /Users/sangchenglong/go/src/Ai-curton/server
+cd /Users/sangchenglong/go/src/story-maker/server
 go build ./cmd/main.go
 ```
 
@@ -462,12 +462,12 @@ func Setup() *gin.Engine {
 	}
 ```
 
-需要在 import 中添加 `"ai-curton/server/config"`。
+需要在 import 中添加 `"story-maker/server/config"`。
 
 - [ ] **Step 5: 验证编译**
 
 ```bash
-cd /Users/sangchenglong/go/src/Ai-curton/server
+cd /Users/sangchenglong/go/src/story-maker/server
 go build ./cmd/main.go
 ```
 
@@ -624,7 +624,7 @@ func (h *AIHandler) CancelTask(c *gin.Context) {
 - [ ] **Step 2: 验证编译**
 
 ```bash
-cd /Users/sangchenglong/go/src/Ai-curton/server
+cd /Users/sangchenglong/go/src/story-maker/server
 go build ./cmd/main.go
 ```
 
@@ -2151,7 +2151,7 @@ git commit -m "feat: 添加 404 页面"
 - [ ] **Step 1: 启动后端**
 
 ```bash
-cd /Users/sangchenglong/go/src/Ai-curton/server
+cd /Users/sangchenglong/go/src/story-maker/server
 go build ./cmd/main.go && echo "Backend build OK"
 ```
 
@@ -2160,7 +2160,7 @@ Expected: `Backend build OK`
 - [ ] **Step 2: 验证前端编译**
 
 ```bash
-cd /Users/sangchenglong/go/src/Ai-curton/web
+cd /Users/sangchenglong/go/src/story-maker/web
 npm run build 2>&1 | tail -5
 ```
 

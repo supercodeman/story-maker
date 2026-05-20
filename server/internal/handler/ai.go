@@ -3,6 +3,7 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -37,8 +38,11 @@ type GenerateTextRequest struct {
 // GenerateImageRequest 图像生成请求
 type GenerateImageRequest struct {
 	PortfolioID uint   `json:"portfolio_id"`
+	ChapterID   uint   `json:"chapter_id"`
 	ModelName   string `json:"model_name"`
-	Prompt      string `json:"prompt" binding:"required"`
+	Prompt      string `json:"prompt"`
+	AspectRatio string `json:"aspect_ratio"`
+	N           int    `json:"n"`
 }
 
 // AdjustCharacterRequest 角色调整请求
@@ -110,9 +114,20 @@ func (h *AIHandler) GenerateImage(c *gin.Context) {
 		return
 	}
 
+	// prompt 为空时使用 "auto" 标记，由 executor 自动提取
+	if req.Prompt == "" {
+		req.Prompt = "auto"
+	}
+
+	// 比例白名单校验
+	if req.AspectRatio != "" && !validImageAspectRatios[req.AspectRatio] {
+		BadRequest(c, "invalid aspect_ratio, must be one of: 1:1, 16:9, 9:16, 3:2, 2:3")
+		return
+	}
+
 	userID := c.GetUint("user_id")
 
-	taskID, err := h.aiService.SubmitImageTask(c.Request.Context(), userID, req.PortfolioID, req.ModelName, req.Prompt)
+	taskID, err := h.aiService.SubmitImageGenTask(c.Request.Context(), userID, req.PortfolioID, req.ChapterID, req.Prompt, req.AspectRatio, req.N)
 	if err != nil {
 		InternalError(c, err.Error())
 		return
@@ -147,6 +162,40 @@ func (h *AIHandler) AdjustCharacter(c *gin.Context) {
 	})
 }
 
+// 合法的 TTS emotion 取值（保留以便将来扩展，Qwen TTS 暂不使用）
+var validTTSEmotions = map[string]bool{
+	"happy": true, "sad": true, "angry": true, "fearful": true,
+	"disgusted": true, "surprised": true, "calm": true,
+	"fluent": true, "whisper": true,
+}
+
+// validImageAspectRatios 合法的图片比例白名单
+var validImageAspectRatios = map[string]bool{
+	"1:1": true, "16:9": true, "9:16": true, "3:2": true, "2:3": true,
+}
+
+// validTTSVoices Qwen TTS 官方支持的音色白名单（大小写敏感，与 provider_qwen_tts.go 中的列表对齐）
+var validTTSVoices = map[string]bool{
+	"Cherry": true, "Ethan": true, "Chelsie": true, "Serena": true,
+	"Dylan": true, "Jada": true, "Sunny": true,
+}
+
+// validateAudioRequest 校验音频生成请求参数，不合法则返回用户友好的英文错误
+// voice_id 走白名单；emotion/speed 做值域校验避免触发上游参数异常
+func validateAudioRequest(req *GenerateAudioRequest) error {
+	if req.VoiceID != "" && !validTTSVoices[req.VoiceID] {
+		return fmt.Errorf("invalid voice_id, must be one of: Cherry/Ethan/Chelsie/Serena/Dylan/Jada/Sunny")
+	}
+	if req.Emotion != "" && !validTTSEmotions[req.Emotion] {
+		return fmt.Errorf("invalid emotion")
+	}
+	// speed 范围 [0.5, 2.0]；0 视为默认值，放行由 Provider 兜底
+	if req.Speed != 0 && (req.Speed < 0.5 || req.Speed > 2.0) {
+		return fmt.Errorf("speed must be between 0.5 and 2.0")
+	}
+	return nil
+}
+
 // GenerateAudio 音频生成接口
 // POST /api/v1/ai/audio/generate
 func (h *AIHandler) GenerateAudio(c *gin.Context) {
@@ -156,18 +205,22 @@ func (h *AIHandler) GenerateAudio(c *gin.Context) {
 		return
 	}
 
+	if err := validateAudioRequest(&req); err != nil {
+		BadRequest(c, err.Error())
+		return
+	}
+
 	userID := c.GetUint("user_id")
 
-	// 将参数序列化为 JSON 作为 prompt 传入
+	// 将参数序列化为 JSON 作为 prompt 传入；chapter_id 同时独立存入 AITask.ChapterID
 	promptJSON, _ := json.Marshal(map[string]interface{}{
-		"text":       req.Text,
-		"voice_id":   req.VoiceID,
-		"speed":      req.Speed,
-		"emotion":    req.Emotion,
-		"chapter_id": req.ChapterID,
+		"text":     req.Text,
+		"voice_id": req.VoiceID,
+		"speed":    req.Speed,
+		"emotion":  req.Emotion,
 	})
 
-	taskID, err := h.aiService.SubmitAudioTask(c.Request.Context(), userID, req.PortfolioID, string(promptJSON))
+	taskID, err := h.aiService.SubmitAudioTask(c.Request.Context(), userID, req.PortfolioID, req.ChapterID, string(promptJSON))
 	if err != nil {
 		InternalError(c, err.Error())
 		return
