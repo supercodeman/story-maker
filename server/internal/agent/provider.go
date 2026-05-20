@@ -91,8 +91,10 @@ type TTSResponse struct {
 
 // VideoGenRequest 视频生成请求
 type VideoGenRequest struct {
-	Prompt string `json:"prompt"` // 场景描述文本
-	Model  string `json:"model"`  // 模型版本
+	Prompt             string  `json:"prompt"`               // 场景描述文本
+	Model              string  `json:"model"`                // 模型版本
+	ReferenceImagePath string  `json:"reference_image_path"` // 参考图本地路径
+	Duration           float64 `json:"duration"`             // 期望时长（秒）
 }
 
 // VideoGenResponse 视频生成响应
@@ -138,6 +140,33 @@ type TTSProvider interface {
 type VideoProvider interface {
 	// GenerateVideo 根据文本描述生成视频
 	GenerateVideo(ctx context.Context, req *VideoGenRequest) (*VideoGenResponse, error)
+	// Name 返回 Provider 名称
+	Name() string
+}
+
+// T2IRequest 文生图请求（独立于 AIProvider 的 ImageRequest）
+type T2IRequest struct {
+	Prompt            string   `json:"prompt"`
+	AspectRatio       string   `json:"aspect_ratio"`        // "1:1", "16:9", "9:16" 等
+	N                 int      `json:"n"`                   // 生成数量 1-4
+	CharacterRefPaths []string `json:"character_ref_paths"` // 角色参考图本地路径（可选）
+}
+
+// T2IResponse 文生图响应
+type T2IResponse struct {
+	Images []ImageResult `json:"images"`
+}
+
+// ImageResult 单张图片结果
+type ImageResult struct {
+	URL      string `json:"url"`
+	FilePath string `json:"file_path"`
+}
+
+// ImageGenProvider 文生图 Provider 接口（独立于 AIProvider，专用于 T2I 任务）
+type ImageGenProvider interface {
+	// GenerateImages 根据文本描述生成图片
+	GenerateImages(ctx context.Context, req *T2IRequest) (*T2IResponse, error)
 	// Name 返回 Provider 名称
 	Name() string
 }

@@ -108,5 +108,10 @@ func autoMigrate() error {
 		&ReflectionLog{},
 		// 模型可用性状态
 		&AIModelStatus{},
+		// 漫剧制作
+		&ComicDrama{},
+		&ComicScript{},
+		&Storyboard{},
+		&CharacterRef{},
 	)
 }

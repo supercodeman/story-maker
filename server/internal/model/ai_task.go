@@ -16,10 +16,14 @@ type AITask struct {
 	Result           string    `gorm:"type:text" json:"result"`
 	ErrorMsg         string    `gorm:"type:text" json:"error_msg"`
 	NovelID          uint      `gorm:"index;default:0" json:"novel_id"`          // 关联小说，0 表示非小说任务
+	ChapterID        *uint     `gorm:"index" json:"chapter_id,omitempty"`        // 关联章节，多模态任务用于写回 Asset
 	ButlerSessionID  string    `gorm:"size:36;index" json:"butler_session_id"`   // 管家会话 ID，串联同一次管家创作的所有任务
 	PromptTokens     int       `gorm:"default:0" json:"prompt_tokens"`
 	CompletionTokens int       `gorm:"default:0" json:"completion_tokens"`
 	TotalTokens      int       `gorm:"default:0" json:"total_tokens"`
+	PipelineID       uint      `gorm:"index;default:0" json:"pipeline_id"`
+	Stage            string    `gorm:"size:30" json:"stage,omitempty"`
+	StageIndex       int       `gorm:"default:0" json:"stage_index"`
 	CreatedAt        time.Time `json:"created_at"`
 	UpdatedAt        time.Time `json:"updated_at"`
 }
@@ -107,4 +111,12 @@ const (
 	TaskTypeForeshadowReview   = "foreshadow_review"    // 伏笔设定审查
 	TaskTypePlotGenerate       = "plot_outline_generate" // 剧情大纲生成
 	TaskTypePlotReview         = "plot_outline_review"   // 剧情大纲审查
+
+	// 漫剧 Pipeline 任务类型
+	TaskTypeComicScript     = "comic_script"
+	TaskTypeComicStoryboard = "comic_storyboard"
+	TaskTypeComicCharRef    = "comic_char_ref"
+	TaskTypeComicAudio      = "comic_audio"
+	TaskTypeComicMedia      = "comic_media"
+	TaskTypeComicCompose    = "comic_compose"
 )
