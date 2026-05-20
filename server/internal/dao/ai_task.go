@@ -160,3 +160,12 @@ func (d *AITaskDAO) ResetNovelIDByNovelIDs(ctx context.Context, novelIDs []uint)
 		Where("novel_id IN ?", novelIDs).
 		Update("novel_id", 0).Error
 }
+
+// CountPipelineTasksByStatus 统计指定 pipeline + stage 下特定状态的任务数
+func (d *AITaskDAO) CountPipelineTasksByStatus(ctx context.Context, pipelineID uint, stage string, statuses []string) (int64, error) {
+	var count int64
+	err := d.db.WithContext(ctx).Model(&model.AITask{}).
+		Where("pipeline_id = ? AND stage = ? AND status IN ?", pipelineID, stage, statuses).
+		Count(&count).Error
+	return count, err
+}

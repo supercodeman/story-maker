@@ -32,6 +32,7 @@ type Dispatcher struct {
 	providers        map[string]AIProvider    // model_name -> Provider
 	ttsProvider      TTSProvider              // TTS Provider（MiniMax 等）
 	videoProvider    VideoProvider            // Video Provider（CogVideo 等）
+	imageGenProvider ImageGenProvider         // 文生图 Provider（万相 wanx-v1 等）
 	keyStore         KeyStore                 // API Key 存储接口
 	taskStore        TaskStore                // 任务存储接口
 	notifier         Notifier                 // WebSocket 通知接口
@@ -94,9 +95,7 @@ func (d *Dispatcher) registerDefaultExecutors() {
 	d.executorRegistry.Register(model.TaskTypeTextPolish, text)
 	d.executorRegistry.Register(model.TaskTypeStoryboard, text)
 
-	image := &ImageTaskExecutor{}
-	d.executorRegistry.Register(model.TaskTypeImageGen, image)
-	d.executorRegistry.Register(model.TaskTypeImageEdit, image)
+	d.executorRegistry.Register(model.TaskTypeImageEdit, &ImageEditTaskExecutor{})
 
 	d.executorRegistry.Register(model.TaskTypeCharacterAdjust, &CharacterTaskExecutor{})
 
@@ -138,20 +137,57 @@ func (d *Dispatcher) registerDefaultExecutors() {
 	d.executorRegistry.Register(model.TaskTypeRevisionAnalysis, text)
 	d.executorRegistry.Register(model.TaskTypeRevisionPlanning, text)
 
+	// 漫剧 Pipeline Executor
+	d.executorRegistry.Register(model.TaskTypeComicScript, &ComicScriptExecutor{})
+	d.executorRegistry.Register(model.TaskTypeComicStoryboard, &ComicStoryboardExecutor{})
+	d.executorRegistry.Register(model.TaskTypeComicCharRef, &ComicCharRefExecutor{})
+	d.executorRegistry.Register(model.TaskTypeComicAudio, &ComicAudioExecutor{})
+	d.executorRegistry.Register(model.TaskTypeComicMedia, &ComicMediaExecutor{})
+	d.executorRegistry.Register(model.TaskTypeComicCompose, &ComicComposeExecutor{})
+
 	// 注意：audio_gen 和 video_gen 的 executor 需要在 Provider 注册后通过
 	// RegisterTTSProvider / RegisterVideoProvider 方法注册
 }
 
 // RegisterTTSProvider 注册 TTS Provider 并注册对应的 Executor
-func (d *Dispatcher) RegisterTTSProvider(tts TTSProvider) {
+// assetWriter 可为 nil（开发/测试），生产环境应传 AssetDAO 以便把生成结果写回 assets 表
+func (d *Dispatcher) RegisterTTSProvider(tts TTSProvider, assetWriter AssetWriter) {
 	d.ttsProvider = tts
-	d.executorRegistry.Register(model.TaskTypeAudioGen, NewAudioTaskExecutor(tts))
+	d.executorRegistry.Register(model.TaskTypeAudioGen, NewAudioTaskExecutor(tts, assetWriter))
 }
 
 // RegisterVideoProvider 注册 Video Provider 并注册对应的 Executor
 func (d *Dispatcher) RegisterVideoProvider(vp VideoProvider) {
 	d.videoProvider = vp
 	d.executorRegistry.Register(model.TaskTypeVideoGen, NewVideoTaskExecutor(vp))
+}
+
+// RegisterImageGenProvider 注册文生图 Provider 并注册对应的 Executor
+func (d *Dispatcher) RegisterImageGenProvider(igp ImageGenProvider, assetWriter AssetWriter) {
+	d.imageGenProvider = igp
+	executor := NewImageGenTaskExecutor(igp, assetWriter)
+	// 注入文本生成能力：直接调 qwen provider，不走降级链避免触发不可用模型
+	executor.SetTextGenerator(func(ctx context.Context, req *TextRequest) (*TextResponse, error) {
+		provider, err := d.GetProvider("qwen")
+		if err != nil {
+			return nil, err
+		}
+		apiKey, keyErr := d.resolveKey(ctx, 0, "qwen")
+		if keyErr != nil {
+			return nil, keyErr
+		}
+		if qp, ok := provider.(*QwenProvider); ok {
+			qp.SetAPIKey(apiKey)
+		}
+		req.Model = "qvq-max-2025-03-25"
+		return provider.GenerateText(ctx, req)
+	})
+	d.executorRegistry.Register(model.TaskTypeImageGen, executor)
+}
+
+// GetImageGenProvider 获取文生图 Provider
+func (d *Dispatcher) GetImageGenProvider() ImageGenProvider {
+	return d.imageGenProvider
 }
 
 // GetTTSProvider 获取 TTS Provider
@@ -288,12 +324,30 @@ func (d *Dispatcher) resolveKey(ctx context.Context, userID uint, providerName s
 	return defaultKey, nil
 }
 
+// isMultiModalTask 判断是否是多模态任务（TTS / 视频 / 文生图），这类任务不走 AIProvider 路由
+// 它们用独立的 Provider 接口（TTSProvider / VideoProvider / ImageGenProvider），Executor 在注册时已绑定 Provider
+func isMultiModalTask(taskType string) bool {
+	switch taskType {
+	case model.TaskTypeAudioGen, model.TaskTypeVideoGen, model.TaskTypeImageGen,
+		model.TaskTypeComicScript, model.TaskTypeComicStoryboard, model.TaskTypeComicCharRef,
+		model.TaskTypeComicAudio, model.TaskTypeComicMedia, model.TaskTypeComicCompose:
+		return true
+	}
+	return false
+}
+
 // Dispatch 分发任务：创建 AITask 记录 → goroutine 异步执行 → 更新状态 → 通知 WebSocket
 func (d *Dispatcher) Dispatch(ctx context.Context, task *model.AITask) error {
-	// 1. 解析 provider/model 格式，用 providerName 做能力检查
-	providerName, _ := ParseModelName(task.ModelName)
-	if err := d.CheckCapability(providerName, task.TaskType); err != nil {
-		return err
+	// 1. 能力校验：多模态任务直接查 executor 是否注册；其他走 AIProvider 能力检查
+	if isMultiModalTask(task.TaskType) {
+		if _, err := d.executorRegistry.Get(task.TaskType); err != nil {
+			return fmt.Errorf("multi-modal executor not registered for %s (check TTS/Video provider config)", task.TaskType)
+		}
+	} else {
+		providerName, _ := ParseModelName(task.ModelName)
+		if err := d.CheckCapability(providerName, task.TaskType); err != nil {
+			return err
+		}
 	}
 
 	// 2. 创建任务记录
@@ -438,17 +492,47 @@ func (d *Dispatcher) executeSingleAttempt(ctx context.Context, task *model.AITas
 	return executor.Execute(ctx, ec)
 }
 
+// executeMultiModalTask 执行多模态任务（audio_gen / video_gen）
+// 这类任务的 Provider 与 Executor 在注册时已绑定，不需要动态查 AIProvider
+// 也不需要跨 Provider 降级（语义不同：TTS 换家意味着音色换家，用户感受差异大）
+func (d *Dispatcher) executeMultiModalTask(ctx context.Context, task *model.AITask) (interface{}, error) {
+	executor, err := d.executorRegistry.Get(task.TaskType)
+	if err != nil {
+		return nil, err
+	}
+
+	ec := &ExecContext{
+		Task:         task,
+		TokenMgr:     d.tokenMgr,
+		ToolRegistry: d.toolRegistry,
+		GetProvider:  d.GetProvider,
+	}
+	return executor.Execute(ctx, ec)
+}
+
 // executeTask 异步执行任务，支持两层 fallback：
 // 1. 同 Provider 内版本降级（FallbackModels）
 // 2. 跨 Provider 降级（fallbackProviders）
+// 多模态任务（audio_gen / video_gen）不走降级链，直接执行
 func (d *Dispatcher) executeTask(ctx context.Context, task *model.AITask) {
-	// 解析 provider/model 格式
-	providerName, modelVersion := ParseModelName(task.ModelName)
-
 	// 更新状态为 running
 	task.Status = model.TaskStatusRunning
 	_ = d.taskStore.UpdateTask(ctx, task)
 	d.notifyTaskUpdate(task.UserID, task.ID, task.Status, nil, "")
+
+	// 多模态任务：直接走 executor，不经 AIProvider 路由
+	if isMultiModalTask(task.TaskType) {
+		result, err := d.executeMultiModalTask(ctx, task)
+		if err != nil {
+			d.handleTaskError(ctx, task, err)
+			return
+		}
+		d.handleTaskSuccess(ctx, task, result)
+		return
+	}
+
+	// 以下为 AIProvider 类任务的降级链
+	providerName, modelVersion := ParseModelName(task.ModelName)
 
 	// 第一层：用原始模型尝试
 	result, err := d.executeSingleAttempt(ctx, task, providerName, modelVersion, nil)

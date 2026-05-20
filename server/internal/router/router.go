@@ -84,15 +84,24 @@ func Setup() *gin.Engine {
 	}
 	dispatcher.SetToolRegistry(toolRegistry)
 
-	// 注册 MiniMax TTS Provider（如果配置了 API Key）
-	if config.Global.MiniMax.APIKey != "" {
+	// 注册 Qwen TTS Provider（优先主力），Qwen 文本 Key 复用
+	// 未配置 Qwen Key 时，降级注册 MiniMax TTS（如果其 Key 存在）
+	if config.Global.Qwen.APIKey != "" {
+		ttsProvider := agent.NewQwenTTSProvider(
+			config.Global.Qwen.APIKey,
+			"", // DashScope 用默认 base_url
+			config.Global.Qwen.TTSModel,
+			store,
+		)
+		dispatcher.RegisterTTSProvider(ttsProvider, dao.NewAssetDAO())
+	} else if config.Global.MiniMax.APIKey != "" {
 		ttsProvider := agent.NewMiniMaxTTSProvider(
 			config.Global.MiniMax.APIKey,
 			config.Global.MiniMax.GroupID,
 			config.Global.MiniMax.BaseURL,
 			store,
 		)
-		dispatcher.RegisterTTSProvider(ttsProvider)
+		dispatcher.RegisterTTSProvider(ttsProvider, dao.NewAssetDAO())
 	}
 
 	// 注册 CogVideo Provider（如果配置了 API Key）
@@ -103,6 +112,17 @@ func Setup() *gin.Engine {
 			store,
 		)
 		dispatcher.RegisterVideoProvider(videoProvider)
+	}
+
+	// 注册万相文生图 Provider（复用 Qwen DashScope API Key）
+	if config.Global.Qwen.APIKey != "" {
+		imageGenProvider := agent.NewQwenImageProvider(
+			config.Global.Qwen.APIKey,
+			"",
+			"wanx-v1",
+			store,
+		)
+		dispatcher.RegisterImageGenProvider(imageGenProvider, dao.NewAssetDAO())
 	}
 
 	// 初始化 Workflow DAO
@@ -179,14 +199,28 @@ func Setup() *gin.Engine {
 	novelFactSvc.SetModelRegistry(modelRegistry)
 	userPrefSvc.SetModelRegistry(modelRegistry)
 
-	// 注入任务完成回调：刷新小说 token 缓存并推送更新 + Token 计费
+	// 漫剧服务（需在 OnTaskCompleted 之前初始化，闭包引用 orchestrator）
+	comicDramaDAO := dao.NewComicDramaDAO(model.DB)
+	pipelineOrchestrator := service.NewPipelineOrchestrator(comicDramaDAO, aiTaskDAO, dispatcher, hub)
+	comicDramaSvc := service.NewComicDramaService(comicDramaDAO)
+	comicDramaSvc.SetOrchestrator(pipelineOrchestrator)
+	comicDramaHandler := handler.NewComicDramaHandler(comicDramaSvc)
+
+	// 注入任务完成回调：刷新小说 token 缓存并推送更新 + Token 计费 + 漫剧 Pipeline 推进
 	tokenBillingSvc := service.NewTokenBillingService()
 	dispatcher.OnTaskCompleted = func(task *model.AITask) {
+		ctx := context.Background()
 		if task.NovelID > 0 {
-			novelService.RefreshTokenUsedForUser(context.Background(), task.NovelID, task.UserID, hub)
+			novelService.RefreshTokenUsedForUser(ctx, task.NovelID, task.UserID, hub)
 		}
 		// Token 计费：高消耗任务自动扣费
 		tokenBillingSvc.OnTaskCompleted(task)
+		// 漫剧流水线推进
+		if task.PipelineID > 0 {
+			if err := pipelineOrchestrator.OnTaskDone(ctx, task); err != nil {
+				log.Printf("[ComicDrama] pipeline advance failed for task %d: %v", task.ID, err)
+			}
+		}
 	}
 
 	// 初始化 handler
@@ -319,6 +353,8 @@ func Setup() *gin.Engine {
 				assets.POST("/upload", assetHandler.Upload)
 				assets.GET("/:id", assetHandler.Get)
 				assets.DELETE("/:id", assetHandler.Delete)
+				assets.PUT("/:id/set-character-ref", assetHandler.SetCharacterRef)
+				assets.PUT("/:id/unset-character-ref", assetHandler.UnsetCharacterRef)
 			}
 
 			// AI 路由
@@ -510,6 +546,31 @@ func Setup() *gin.Engine {
 				hitAnalysis.GET("", hitAnalysisHandler.List)
 				hitAnalysis.GET("/:id", hitAnalysisHandler.Get)
 				hitAnalysis.DELETE("/:id", hitAnalysisHandler.Delete)
+			}
+
+			// 漫剧路由
+			comicDrama := authorized.Group("/comic-drama")
+			{
+				comicDrama.POST("", comicDramaHandler.Create)
+				comicDrama.GET("", comicDramaHandler.List)
+				comicDrama.GET("/:id", comicDramaHandler.Get)
+				comicDrama.DELETE("/:id", comicDramaHandler.Delete)
+				comicDrama.PUT("/:id/config", comicDramaHandler.UpdateConfig)
+				comicDrama.POST("/:id/start", comicDramaHandler.StartPipeline)
+				comicDrama.POST("/:id/advance", comicDramaHandler.AdvanceStage)
+				comicDrama.POST("/:id/retry", comicDramaHandler.RetryFailed)
+				comicDrama.GET("/:id/script", comicDramaHandler.GetScript)
+				comicDrama.PUT("/:id/script", comicDramaHandler.UpdateScript)
+				comicDrama.POST("/:id/script/approve", comicDramaHandler.ApproveScript)
+				comicDrama.GET("/:id/storyboard", comicDramaHandler.GetStoryboard)
+				comicDrama.PUT("/storyboard/:shot_id", comicDramaHandler.UpdateStoryboardShot)
+				comicDrama.POST("/:id/storyboard/approve", comicDramaHandler.ApproveStoryboard)
+				comicDrama.GET("/:id/characters", comicDramaHandler.GetCharacters)
+				comicDrama.POST("/characters/:char_id/regenerate", comicDramaHandler.RegenerateCharacter)
+				comicDrama.POST("/:id/characters/approve", comicDramaHandler.ApproveCharacters)
+				comicDrama.GET("/:id/segments", comicDramaHandler.GetSegments)
+				comicDrama.POST("/:id/compose", comicDramaHandler.TriggerCompose)
+				comicDrama.GET("/:id/download", comicDramaHandler.GetDownloadURL)
 			}
 
 			// Workflow 工作流路由
